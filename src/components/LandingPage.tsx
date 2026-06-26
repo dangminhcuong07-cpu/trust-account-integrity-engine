@@ -51,7 +51,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
               View Live Demo <ArrowRight className="w-4 h-4" />
             </button>
             <a
-              href="#"
+              href="/exception_report.pdf"
               className="inline-flex items-center gap-2 border border-emerald-600 text-emerald-100 font-semibold text-sm px-5 py-3 rounded-lg hover:bg-emerald-800 transition-colors"
             >
               <FileText className="w-4 h-4" /> Download Sample Report (PDF)
