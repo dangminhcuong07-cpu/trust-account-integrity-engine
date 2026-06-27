@@ -1,15 +1,15 @@
 import React from 'react';
-import { ShieldAlert, AlertTriangle, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { violations, complianceChecks, reportSummary } from '../data';
 
-const NAVY    = '#1B2A4A';
-const GOLD    = '#C8A84B';
-const OFFWHITE = '#F7F5F0';
+const RED   = '#C8284B';
+const AMBER = '#C87028';
+const GREEN = '#2A6B3C';
 const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html';
 const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
 
 function regUrl(citation: string): string {
-  if (citation.startsWith('NZLS') || citation.includes('PS-2')) return NZLS_URL;
+  if (citation.startsWith('NZLS') || citation.includes('PS-2') || citation.includes('Guidelines')) return NZLS_URL;
   return LCA_URL;
 }
 
@@ -18,141 +18,131 @@ const sorted = [...violations].sort((a, b) => {
   return a.severity === 'CRITICAL' ? -1 : 1;
 });
 
-const criticalCount = violations.filter(v => v.severity === 'CRITICAL').length;
-const warningCount  = violations.length - criticalCount;
-
 export default function EngineResults() {
-  return (
-    <div className="space-y-8" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
+  const criticalCount = reportSummary.criticalCount;
+  const highCount     = reportSummary.highCount;
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div>
-        <div className="flex flex-wrap items-center gap-3 mb-2">
-          <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 700, fontSize: 20, color: NAVY }}>
-            Compliance Findings
-          </h2>
-          <span style={{ fontSize: 10, fontWeight: 700, background: `${GOLD}22`, color: '#8B6914', padding: '3px 10px', borderRadius: 20, border: `1px solid ${GOLD}44`, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            LIVE ENGINE OUTPUT
-          </span>
+  return (
+    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
+
+      {/* ── Eyebrow + heading ──────────────────────────────────────────────── */}
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Exception Report</div>
+      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 22px', color: '#1B2A4A' }}>Compliance Findings</h1>
+
+      {/* ── Summary cards — Correction 5 (real engine data) ───────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 30 }}>
+        <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '18px 20px' }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8576', marginBottom: 9 }}>Firm</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#1B2A4A', lineHeight: 1.35 }}>{reportSummary.firmName}</div>
+          <div style={{ fontSize: 12, color: '#6B6B7A' }}>Trust Account</div>
         </div>
-        <p style={{ fontSize: 13, color: '#5a5a5a', lineHeight: 1.7, maxWidth: 640 }}>
-          These results come from running the Trust Account Integrity Engine against
-          synthetic NZ trust ledger data containing 7 deliberately seeded compliance
-          breaches. The engine processed the data deterministically in Python; no AI
-          is in the arithmetic path.
+        <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '18px 20px' }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8576', marginBottom: 9 }}>Reporting period</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#1B2A4A' }}>{reportSummary.period}</div>
+          <div style={{ fontSize: 12, color: '#6B6B7A' }}>Monthly certification</div>
+        </div>
+        <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '18px 20px' }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8576', marginBottom: 9 }}>Generated</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#1B2A4A' }}>{reportSummary.generatedAt}</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#6B6B7A' }}>NZST</div>
+        </div>
+        <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '18px 20px' }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8576', marginBottom: 9 }}>Findings</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <span style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 22, color: RED, fontWeight: 500 }}>{criticalCount}</span>
+            <span style={{ fontSize: 12, color: '#6B6B7A' }}>Critical</span>
+            <span style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 22, color: AMBER, fontWeight: 500 }}>{highCount}</span>
+            <span style={{ fontSize: 12, color: '#6B6B7A' }}>High</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Explainer ─────────────────────────────────────────────────────── */}
+      <div style={{ background: '#FBFAF7', border: '1px solid #D4CFC8', borderLeft: '3px solid #1B2A4A', borderRadius: 4, padding: '18px 22px', marginBottom: 34 }}>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: '#3A3A4A' }}>
+          These results come from running the Trust Account Integrity Engine against synthetic NZ trust ledger data containing 7 deliberately seeded compliance breaches. The engine processed the data deterministically in Python; no AI is in the arithmetic path.
         </p>
       </div>
 
-      {/* ── Summary cards ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div style={{ background: OFFWHITE, borderRadius: 10, padding: '14px 16px', border: '1px solid #e0ddd6' }}>
-          <p style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600, marginBottom: 4 }}>Firm</p>
-          <p style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{reportSummary.firmName}</p>
-        </div>
-        <div style={{ background: OFFWHITE, borderRadius: 10, padding: '14px 16px', border: '1px solid #e0ddd6' }}>
-          <p style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600, marginBottom: 4 }}>Period</p>
-          <p style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{reportSummary.period}</p>
-        </div>
-        <div style={{ background: OFFWHITE, borderRadius: 10, padding: '14px 16px', border: '1px solid #e0ddd6' }}>
-          <p style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600, marginBottom: 4 }}>Generated</p>
-          <p style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{reportSummary.generatedAt}</p>
-        </div>
-        <div style={{ background: '#FEF0F0', borderRadius: 10, padding: '14px 16px', border: '1px solid #FCCACA' }}>
-          <p style={{ fontSize: 10, color: '#C8284B', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600, marginBottom: 4 }}>Violations</p>
-          <p style={{ fontSize: 12, fontWeight: 600, color: '#2a2a2a' }}>
-            {violations.length} total —{' '}
-            <span style={{ color: '#C8284B' }}>{criticalCount} CRITICAL</span>
-            {', '}
-            <span style={{ color: '#C87028' }}>{warningCount} WARNING</span>
-          </p>
-        </div>
+      {/* ── Violations — real data with clickable badges (Correction 6 P2) ── */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 22, margin: 0, color: '#1B2A4A' }}>Violations</h2>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576' }}>{reportSummary.totalViolations} findings</span>
       </div>
-
-      {/* ── Violation cards ────────────────────────────────────────────────── */}
-      <div>
-        <h3 style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-          Exceptions Found
-        </h3>
-        <div className="space-y-3">
-          {sorted.map((v, i) => {
-            const isCrit = v.severity === 'CRITICAL';
-            const borderColor = isCrit ? '#C8284B' : '#C87028';
-            const bgColor     = isCrit ? '#FFF8F8' : '#FFFBF5';
-            return (
-              <div
-                key={`${v.ruleId}-${v.id}-${i}`}
-                style={{ borderLeft: `3px solid ${borderColor}`, borderRadius: '0 10px 10px 0', background: bgColor, padding: '14px 18px', border: `1px solid ${isCrit ? '#FCCACA' : '#F5DDB8'}`, borderLeftWidth: 3, borderLeftColor: borderColor }}
-              >
-                <div className="flex flex-wrap items-start gap-2 mb-2">
-                  {/* Severity badge */}
-                  {isCrit ? (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#C8284B', background: '#FCCACA', padding: '2px 8px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      <ShieldAlert className="w-3 h-3" /> CRITICAL
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#C87028', background: '#FDEDC4', padding: '2px 8px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      <AlertTriangle className="w-3 h-3" /> WARNING
-                    </span>
-                  )}
-                  {/* Regulation badge — clickable link */}
-                  <a
-                    href={regUrl(v.nzLawSocietyRule)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: 10, fontWeight: 600, color: NAVY, background: `${NAVY}10`, padding: '2px 8px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 3, border: `1px solid ${NAVY}22`, textDecoration: 'none', letterSpacing: '0.04em' }}
-                  >
-                    {v.nzLawSocietyRule} <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                  {/* Record ID */}
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: '#888', padding: '2px 6px', background: '#f0ede8', borderRadius: 4 }}>
-                    {v.sourceRecordId}
-                  </span>
-                </div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#1a1a1a', marginBottom: 4 }}>{v.ruleName}</p>
-                <p style={{ fontSize: 12, color: '#5a5a5a', lineHeight: 1.6 }}>{v.evidence}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 44 }}>
+        {sorted.map((v, i) => {
+          const isCrit  = v.severity === 'CRITICAL';
+          const color   = isCrit ? RED : AMBER;
+          const border  = isCrit ? '#E8B0BD' : '#E8C8A8';
+          const tint    = isCrit ? '#FBEEF1' : '#FBF3EA';
+          const href    = regUrl(v.nzLawSocietyRule);
+          return (
+            <div key={`${v.ruleId}-${i}`} style={{ background: '#FFFFFF', border: `1px solid #D4CFC8`, borderLeft: `4px solid ${color}`, borderRadius: 4, padding: '20px 24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+                {/* Severity badge */}
+                <span style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#FFFFFF', background: color, borderRadius: 3, padding: '4px 9px' }}>
+                  {v.severity}
+                </span>
+                {/* Regulation badge — clickable (Correction 6 Placement 2) */}
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: color, border: `1px solid ${border}`, borderRadius: 3, padding: '3px 9px', background: tint, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                >
+                  {v.nzLawSocietyRule} <ExternalLink style={{ width: 10, height: 10, flexShrink: 0 }} />
+                </a>
+                {/* Record ID */}
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576', marginLeft: 'auto' }}>
+                  Record {v.sourceRecordId}
+                </span>
               </div>
-            );
-          })}
-        </div>
+              <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 16, margin: '0 0 8px', color: '#1B2A4A' }}>{v.ruleName}</h3>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: '#3A3A4A' }}>{v.evidence}</p>
+            </div>
+          );
+        })}
       </div>
 
-      {/* ── Rules applied table ────────────────────────────────────────────── */}
-      <div>
-        <h3 style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-          Rules Applied
-        </h3>
-        <div style={{ borderRadius: 10, border: '1px solid #e0ddd6', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: NAVY }}>
-                <th style={{ textAlign: 'left', padding: '9px 14px', fontWeight: 600, color: 'rgba(255,255,255,0.55)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Rule</th>
-                <th className="hidden sm:table-cell" style={{ textAlign: 'left', padding: '9px 14px', fontWeight: 600, color: 'rgba(255,255,255,0.55)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Regulation</th>
-                <th style={{ textAlign: 'left', padding: '9px 14px', fontWeight: 600, color: 'rgba(255,255,255,0.55)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', width: 80 }}>Status</th>
-                <th style={{ textAlign: 'left', padding: '9px 14px', fontWeight: 600, color: 'rgba(255,255,255,0.55)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', width: 64 }}>Found</th>
-              </tr>
-            </thead>
-            <tbody>
-              {complianceChecks.map((c, i) => (
-                <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #e8e6e1' : 'none', background: i % 2 === 0 ? OFFWHITE : '#fff' }}>
-                  <td style={{ padding: '10px 14px', fontWeight: 500, color: '#1a1a1a' }}>{c.name}</td>
-                  <td className="hidden sm:table-cell" style={{ padding: '10px 14px', color: '#5a5a5a' }}>{c.nzlsReference}</td>
-                  <td style={{ padding: '10px 14px' }}>
-                    {c.status === 'passed' ? (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#2A6B3C', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <CheckCircle2 className="w-3.5 h-3.5" /> PASS
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#C8284B', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <XCircle className="w-3.5 h-3.5" /> FAIL
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ padding: '10px 14px', color: '#5a5a5a' }}>{c.resultCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* ── Compliance checks — Correction 3 regulation codes ─────────────── */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 22, margin: 0, color: '#1B2A4A' }}>Compliance checks</h2>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576' }}>{complianceChecks.length} rules evaluated</span>
+      </div>
+      <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden', marginBottom: 30 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr 90px 96px', padding: '13px 22px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
+          <div>Regulation</div>
+          <div>Check</div>
+          <div style={{ textAlign: 'center' }}>Findings</div>
+          <div style={{ textAlign: 'right' }}>Result</div>
         </div>
+        {complianceChecks.map((c, i) => {
+          const isPassed = c.status === 'passed';
+          const color    = isPassed ? GREEN : RED;
+          const label    = isPassed ? 'PASS' : 'FAIL';
+          return (
+            <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '220px 1fr 90px 96px', alignItems: 'center', padding: '15px 22px', borderBottom: i < complianceChecks.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', lineHeight: 1.4 }}>{c.nzlsReference}</div>
+              <div style={{ fontSize: 14, color: '#1A1A2E' }}>{c.name}</div>
+              <div style={{ textAlign: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#6B6B7A' }}>{c.resultCount}</div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, letterSpacing: 0.5, color }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }}></span>{label}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Actions ───────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 14 }}>
+        <a
+          href="/exception_report.pdf"
+          style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 14, fontWeight: 600, background: '#C8A84B', color: '#1B2A4A', border: 'none', borderRadius: 4, padding: '13px 24px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}
+        >
+          Download Exception Report (PDF)
+        </a>
       </div>
 
     </div>

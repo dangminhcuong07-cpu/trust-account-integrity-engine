@@ -1,106 +1,165 @@
 import React, { useState } from 'react';
-import WorkflowDesigner from './components/WorkflowDesigner';
-import StrategicBrief from './components/StrategicBrief';
+import { ExternalLink } from 'lucide-react';
 import EngineResults from './components/EngineResults';
 import LandingPage from './components/LandingPage';
-import { Scale, Activity, Info, Calendar, CreditCard, TrendingUp, ChevronLeft, ExternalLink, FileCheck } from 'lucide-react';
 
-const NAVY    = '#1B2A4A';
-const GOLD    = '#C8A84B';
-const OFFWHITE = '#F7F5F0';
 const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html';
 const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
 
 type Tab = 'findings' | 'how' | 'workflows' | 'fees' | 'market';
 
-const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'findings',  label: 'Compliance Findings', icon: <Activity className="w-4 h-4 shrink-0" /> },
-  { id: 'how',       label: 'How It Works',         icon: <Info className="w-4 h-4 shrink-0" /> },
-  { id: 'workflows', label: 'Practice Workflows',   icon: <Calendar className="w-4 h-4 shrink-0" /> },
-  { id: 'fees',      label: 'Fee Estimate',         icon: <CreditCard className="w-4 h-4 shrink-0" /> },
-  { id: 'market',    label: 'Market Context',       icon: <TrendingUp className="w-4 h-4 shrink-0" /> },
+const NAV_DEFS: { id: Tab; label: string }[] = [
+  { id: 'findings',  label: 'Compliance Findings' },
+  { id: 'how',       label: 'How It Works' },
+  { id: 'workflows', label: 'Practice Workflows' },
+  { id: 'fees',      label: 'Fee Estimate' },
+  { id: 'market',    label: 'Market Context' },
+];
+
+const FEES = [
+  { name: 'Monthly review',  scope: 'One trust account — ledger ingestion, 7-rule evaluation, PDF exception report, Statement of Diligence pack', fee: '$199 / month' },
+  { name: 'Multi-principal', scope: 'Up to 5 trust accounts — consolidated exception report across all accounts, each evaluated separately',      fee: '$349 / month' },
+  { name: 'Inspection pack', scope: 'Statement of Diligence evidence pack formatted for the NZLS Inspectorate, includes 12-month findings history', fee: '$499 (one-off)' },
 ];
 
 function HowItWorksTab() {
   const steps = [
-    { n: '01', title: 'Load your data', body: 'Point the engine at your CSV or Excel trust ledger export. The column mapper normalises non-standard headers automatically — no manual reformatting required.' },
-    { n: '02', title: 'Run 7 deterministic rules', body: 'Each rule is a pure Python function with no AI in the arithmetic path. Rules check for overdrawn ledgers, reconciliation breaks, dormant balances, unmatched bank lines, unreconciled item ageing, FIT overholding, and fee reference gaps.' },
-    { n: '03', title: 'Review the exception report', body: 'Violations are ranked CRITICAL → WARNING → NOTICE. Each finding cites the specific LCA Regulation or NZLS Guideline, the record ID, and the exact dollar or date value that triggered the flag.' },
-    { n: '04', title: 'Export the evidence pack', body: 'One command produces a PDF exception report and a Statement of Diligence — both formatted for the NZLS Inspectorate and your TAS monthly certification under Regulation 17.' },
+    { no: '01', title: 'Export', body: 'Export your trust ledger, client ledger, and reconciliation as CSV or Excel from LEAP, Actionstep, or Infinitylaw.' },
+    { no: '02', title: 'Ingest', body: 'The engine reads the export on your own machine and normalises it to a common ledger model. Nothing is uploaded.' },
+    { no: '03', title: 'Evaluate', body: 'Seven regulation rules run deterministically in Python. Each transaction is tested against the relevant clause of the 2008 Regulations.' },
+    { no: '04', title: 'Report', body: 'A PDF exception report and a Statement of Diligence evidence pack are written to disk, ready for your monthly certification and the NZLS Inspectorate.' },
   ];
   return (
     <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
-      <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 700, fontSize: 20, color: NAVY, marginBottom: 8 }}>How It Works</h2>
-      <p style={{ fontSize: 13, color: '#5a5a5a', lineHeight: 1.7, maxWidth: 580, marginBottom: 32 }}>
-        A four-step process from raw ledger data to inspector-ready evidence pack.
-      </p>
-      <div className="space-y-6">
-        {steps.map(s => (
-          <div key={s.n} className="flex gap-5">
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${NAVY}10`, border: `1px solid ${NAVY}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, color: NAVY }}>
-              {s.n}
-            </div>
-            <div style={{ paddingTop: 4 }}>
-              <h3 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 600, fontSize: 15, color: NAVY, marginBottom: 6 }}>{s.title}</h3>
-              <p style={{ fontSize: 13, color: '#5a5a5a', lineHeight: 1.7 }}>{s.body}</p>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Process</div>
+      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 14px', color: '#1B2A4A' }}>How It Works</h1>
+      <p style={{ margin: '0 0 34px', fontSize: 16, color: '#4A4A5A', maxWidth: '62ch' }}>Four steps, run on your own machine. No upload, no account, no data leaving your office.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {steps.map((s, i) => (
+          <div key={s.no} style={{ display: 'grid', gridTemplateColumns: '64px 1fr', gap: 24, padding: '24px 0', borderBottom: i < steps.length - 1 ? '1px solid #D4CFC8' : 'none' }}>
+            <div style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 30, color: '#C8A84B', fontWeight: 500 }}>{s.no}</div>
+            <div>
+              <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 17, margin: '0 0 8px', color: '#1B2A4A' }}>{s.title}</h3>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: '#3A3A4A', maxWidth: '68ch' }}>{s.body}</p>
             </div>
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 36, padding: '16px 20px', background: OFFWHITE, borderRadius: 10, border: '1px solid #e0ddd6', fontSize: 13, color: '#5a5a5a', lineHeight: 1.7 }}>
-        <strong style={{ color: NAVY }}>Deterministic by design.</strong> Every result can be reproduced by re-running the engine against the same input file. There are no probabilistic model calls in the core compliance path.
+    </div>
+  );
+}
+
+function PracticeWorkflowsTab() {
+  const workflows = [
+    { title: 'Monthly certification', body: 'Run before signing your monthly trust account certificate to surface breaches while they can still be corrected.' },
+    { title: 'Inspectorate preparation', body: 'Generate the Statement of Diligence evidence pack ahead of an NZLS Trust Account inspection.' },
+    { title: 'New supervisor handover', body: "Establish a documented baseline when taking over responsibility for a firm's trust account." },
+    { title: 'Remediation tracking', body: 'Re-run after corrections to confirm a flagged breach has cleared and record the date it did.' },
+  ];
+  return (
+    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Practice</div>
+      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 14px', color: '#1B2A4A' }}>Practice Workflows</h1>
+      <p style={{ margin: '0 0 34px', fontSize: 16, color: '#4A4A5A', maxWidth: '62ch' }}>Where the engine fits into the obligations a Trust Account Supervisor already carries.</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        {workflows.map(w => (
+          <div key={w.title} style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: 24 }}>
+            <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 16, margin: '0 0 10px', color: '#1B2A4A' }}>{w.title}</h3>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: '#3A3A4A' }}>{w.body}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
 function FeeEstimateTab() {
-  const plans = [
-    { label: 'Solo', price: '$199', period: '/month', desc: 'Single practitioner or sole principal. Unlimited monthly runs.' },
-    { label: 'Multi-principal', price: '$349', period: '/month', desc: 'Up to 5 principals. Covers multi-partner firms filing a combined certification.', highlight: true },
-    { label: 'Annual evidence pack', price: '$499', period: '/year', desc: 'Unlimited runs plus archival PDF output formatted for NZLS inspections.' },
-  ];
   return (
     <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
-      <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 700, fontSize: 20, color: NAVY, marginBottom: 8 }}>Fee Estimate</h2>
-      <p style={{ fontSize: 13, color: '#5a5a5a', lineHeight: 1.7, maxWidth: 580, marginBottom: 8 }}>
-        Runs locally — your data never leaves your office. No subscription to a cloud platform, no data transfer risk.
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Costing</div>
+      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 14px', color: '#1B2A4A' }}>Fee Estimate</h1>
+
+      {/* Above pricing — Correction 4 */}
+      <p style={{ margin: '0 0 28px', fontSize: 15, color: '#4A4A5A', maxWidth: '62ch', lineHeight: 1.6 }}>
+        Runs locally — your data never leaves your office. No cloud storage, no external processing.
       </p>
-      <div className="grid sm:grid-cols-3 gap-5" style={{ marginBottom: 20, marginTop: 28 }}>
-        {plans.map(p => (
-          <div
-            key={p.label}
-            style={{
-              borderRadius: 12,
-              padding: '24px 22px',
-              border: p.highlight ? `2px solid ${GOLD}` : '1px solid #e0ddd6',
-              background: p.highlight ? `${GOLD}0a` : OFFWHITE,
-              position: 'relative',
-            }}
-          >
-            {p.highlight && (
-              <div style={{ position: 'absolute', top: -11, left: 20, background: GOLD, color: NAVY, fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                Most popular
-              </div>
-            )}
-            <p style={{ fontSize: 12, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>{p.label}</p>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 12 }}>
-              <span style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 32, fontWeight: 700, color: NAVY }}>{p.price}</span>
-              <span style={{ fontSize: 13, color: '#888' }}>{p.period}</span>
-            </div>
-            <p style={{ fontSize: 13, color: '#5a5a5a', lineHeight: 1.6 }}>{p.desc}</p>
+
+      {/* Pricing table — Correction 4 */}
+      <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden', marginBottom: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 150px', padding: '13px 24px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
+          <div>Engagement</div>
+          <div>Scope</div>
+          <div style={{ textAlign: 'right' }}>Fee</div>
+        </div>
+        {FEES.map((x, i) => (
+          <div key={x.name} style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 150px', alignItems: 'center', padding: '18px 24px', borderBottom: i < FEES.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#1B2A4A' }}>{x.name}</div>
+            <div style={{ fontSize: 14, color: '#3A3A4A' }}>{x.scope}</div>
+            <div style={{ textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, color: '#1B2A4A' }}>{x.fee}</div>
           </div>
         ))}
       </div>
-      <p style={{ fontSize: 12, color: '#888', lineHeight: 1.6 }}>
-        Billed annually. GST not included. Cancel anytime.
+
+      {/* Below pricing — Correction 4 */}
+      <p style={{ margin: 0, fontSize: 13, color: '#6B6B7A', lineHeight: 1.6 }}>
+        All figures NZD, exclusive of GST (+15%). Invoiced monthly or annually. Cancel by email with 30 days notice. No setup fee. No automatic renewal.
       </p>
     </div>
   );
 }
 
+function MarketContextTab() {
+  const regRefs = [
+    { label: 'Lawyers and Conveyancers Act 2006, ss 110–116', url: 'https://www.legislation.govt.nz/act/public/2006/0001/latest/whole.html' },
+    { label: 'Lawyers and Conveyancers Act (Trust Account) Regulations 2008', url: LCA_URL },
+    { label: "NZLS Lawyers' Trust Accounting Guidelines (June 2024)", url: NZLS_URL },
+    { label: 'NZLS Inspectorate — Trust Account Reviews', url: 'https://www.lawsociety.org.nz/professional-practice/legal-practice/trust-account-management/' },
+  ];
+  return (
+    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Context</div>
+      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 22px', color: '#1B2A4A' }}>Market Context</h1>
+
+      {/* Mockup 2 three paragraphs — kept exactly */}
+      <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '32px 36px', maxWidth: '72ch', marginBottom: 36 }}>
+        <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.7, color: '#3A3A4A' }}>
+          Every New Zealand law firm that holds client money must appoint a Trust Account Supervisor. That person certifies, each month, that the firm's trust account complies with the 2008 Regulations — and carries personal responsibility for the certification.
+        </p>
+        <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.7, color: '#3A3A4A' }}>
+          The review behind that certificate is still largely manual: exporting ledgers, reconciling by hand, and reading for exceptions. The work is exacting, repetitive, and unforgiving of a missed entry.
+        </p>
+        <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: '#3A3A4A' }}>
+          The Trust Account Integrity Engine does the mechanical part of that review consistently and on the record — so the supervisor's judgement is spent on the findings, not on finding them.
+        </p>
+      </div>
+
+      {/* Regulatory References — Correction 7 */}
+      <div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: '#8A8576', marginBottom: 14 }}>
+          Regulatory References
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {regRefs.map(r => (
+            <a
+              key={r.url}
+              href={r.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, borderBottom: '1px solid transparent' }}
+              onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+              onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+            >
+              {r.label} <ExternalLink style={{ width: 12, height: 12, flexShrink: 0, color: '#C8A84B' }} />
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('findings');
+  const [tab, setTab] = useState<Tab>('findings');
   const [showLanding, setShowLanding] = useState(true);
 
   if (showLanding) {
@@ -108,140 +167,100 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: OFFWHITE, fontFamily: "'IBM Plex Sans', sans-serif", display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#F7F5F0', fontFamily: "'IBM Plex Sans', sans-serif", color: '#1A1A2E', display: 'flex', flexDirection: 'column' }}>
 
-      {/* ── Header (60px navy) ─────────────────────────────────────────────── */}
-      <header style={{ background: NAVY, height: 60, display: 'flex', alignItems: 'center', position: 'sticky', top: 0, zIndex: 40 }}>
-        <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 flex justify-between items-center">
-
-          {/* Brand */}
-          <div className="flex items-center gap-3">
-            <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: '6px', display: 'flex', alignItems: 'center' }}>
-              <Scale className="w-4 h-4" style={{ color: GOLD }} />
-            </div>
-            <div>
-              <p style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 700, fontSize: 14, color: '#fff', lineHeight: 1.2 }}>
-                Trust Account Integrity Engine
-              </p>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', lineHeight: 1 }}>NZ-aware compliance review</p>
-            </div>
-          </div>
-
-          {/* Right: back link + status */}
-          <div className="flex items-center gap-5">
-            <button
-              onClick={() => setShowLanding(true)}
-              className="hidden sm:inline-flex items-center gap-1"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.50)', fontFamily: "'IBM Plex Sans', sans-serif" }}
-            >
-              <ChevronLeft className="w-3 h-3" /> Back to Overview
-            </button>
-            <div className="hidden md:flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full" style={{ background: GOLD, opacity: 0.6 }}></span>
-                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: GOLD }}></span>
-              </span>
-              <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono', monospace", color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
-                System Active (Read-Only)
-              </span>
-            </div>
-          </div>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <header style={{ background: '#1B2A4A', color: '#FFFFFF', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          <span style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 18, fontWeight: 500 }}>Trust Account Integrity Engine</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, borderLeft: '1px solid rgba(255,255,255,0.18)', paddingLeft: 18 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3F9A5C', boxShadow: '0 0 0 3px rgba(63,154,92,0.22)' }}></span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 0.5, color: '#C7D0E0' }}>Read-Only Mode</span>
+          </span>
         </div>
+        <button
+          onClick={() => setShowLanding(true)}
+          style={{ background: 'none', border: 'none', color: '#C7D0E0', fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 13, cursor: 'pointer', padding: '6px 0' }}
+        >
+          ← Back to Overview
+        </button>
       </header>
 
-      {/* ── Body: sidebar + content ────────────────────────────────────────── */}
-      <div className="flex-1 max-w-7xl w-full mx-auto flex flex-col lg:flex-row" style={{ padding: '32px 16px', gap: 24 }}>
+      {/* ── Body ───────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
-        {/* ── Sidebar (264px navy) ──────────────────────────────────────────── */}
-        <aside style={{ width: 264, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Nav */}
-          <nav style={{ background: NAVY, borderRadius: 12, overflow: 'hidden', padding: '8px 0' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.09em', padding: '8px 18px 4px' }}>
-              Engine Controls
-            </p>
-            {NAV_ITEMS.map(item => {
-              const active = activeTab === item.id;
+        {/* ── Sidebar — Correction 9 (5 tabs, no LedgerSandbox) ───────────── */}
+        <aside style={{ width: 264, flexShrink: 0, background: '#1B2A4A', color: '#FFFFFF', display: 'flex', flexDirection: 'column', padding: '26px 0' }}>
+          <div style={{ padding: '0 24px 18px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6E7B96' }}>Review</div>
+          <nav style={{ display: 'flex', flexDirection: 'column' }}>
+            {NAV_DEFS.map(n => {
+              const active = n.id === tab;
               return (
                 <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  key={n.id}
+                  onClick={() => setTab(n.id)}
                   style={{
-                    width: '100%',
                     textAlign: 'left',
-                    padding: '10px 18px',
+                    background: active ? '#243C66' : 'transparent',
                     border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    fontSize: 13,
-                    fontWeight: active ? 600 : 400,
-                    color: active ? '#fff' : 'rgba(255,255,255,0.55)',
-                    background: active ? 'rgba(255,255,255,0.10)' : 'transparent',
-                    borderLeft: active ? `3px solid ${GOLD}` : '3px solid transparent',
-                    transition: 'all 0.15s',
+                    borderLeft: `3px solid ${active ? '#C8A84B' : 'transparent'}`,
+                    color: active ? '#FFFFFF' : '#AEB8CC',
                     fontFamily: "'IBM Plex Sans', sans-serif",
+                    fontSize: 14,
+                    fontWeight: active ? 600 : 400,
+                    padding: '11px 24px',
+                    cursor: 'pointer',
                   }}
                 >
-                  {item.icon}
-                  <span>{item.label}</span>
-                  {item.id === 'findings' && (
-                    <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, background: GOLD, color: NAVY, padding: '2px 6px', borderRadius: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      LIVE
-                    </span>
-                  )}
+                  {n.label}
                 </button>
               );
             })}
           </nav>
 
-          {/* Regulation Scope card */}
-          <div style={{ background: NAVY, borderRadius: 12, padding: '18px' }}>
-            <h4 style={{ fontSize: 11, fontWeight: 600, color: GOLD, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-              <FileCheck className="w-3.5 h-3.5" /> Regulation Scope
-            </h4>
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.60)', lineHeight: 1.7, marginBottom: 12 }}>
-              Rules configured in accordance with the <strong style={{ color: 'rgba(255,255,255,0.85)' }}>Lawyers and Conveyancers Act (Trust Account) Regulations 2008</strong> and <strong style={{ color: 'rgba(255,255,255,0.85)' }}>NZLS Guidelines</strong>.
-            </p>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>7 rules · New Zealand</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <a
-                href={LCA_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: 11, color: GOLD, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontWeight: 500 }}
-              >
-                LCA (Trust Account) Regulations 2008 <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-              <a
-                href={NZLS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: 11, color: GOLD, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontWeight: 500 }}
-              >
-                NZLS Trust Accounting Guidelines 2024 <ExternalLink className="w-2.5 h-2.5" />
-              </a>
+          {/* Regulation Scope card — Correction 6 Placement 3 */}
+          <div style={{ marginTop: 'auto', padding: 24 }}>
+            <div style={{ border: '1px solid rgba(255,255,255,0.14)', borderRadius: 4, padding: 16 }}>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6E7B96', marginBottom: 10 }}>Regulation Scope</div>
+              <div style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 14, lineHeight: 1.4, color: '#FFFFFF', marginBottom: 10 }}>
+                Lawyers and Conveyancers Act (Trust Account) Regulations 2008
+              </div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#9AA5BC', letterSpacing: 0.5, marginBottom: 14 }}>7 rules · New Zealand</div>
+              {/* Source links — Correction 6 Placement 3 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <a
+                  href={LCA_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#C8A84B', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                >
+                  ↗ LCA (Trust Account) Regulations 2008
+                </a>
+                <a
+                  href={NZLS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#C8A84B', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                >
+                  ↗ NZLS Trust Accounting Guidelines 2024
+                </a>
+              </div>
             </div>
           </div>
         </aside>
 
-        {/* ── Content area ─────────────────────────────────────────────────── */}
-        <section style={{ flex: 1, background: '#fff', borderRadius: 12, padding: 28, border: '1px solid #e0ddd6', minWidth: 0 }}>
-          {activeTab === 'findings'  && <EngineResults />}
-          {activeTab === 'how'       && <HowItWorksTab />}
-          {activeTab === 'workflows' && <WorkflowDesigner />}
-          {activeTab === 'fees'      && <FeeEstimateTab />}
-          {activeTab === 'market'    && <StrategicBrief />}
-        </section>
-      </div>
+        {/* ── Content ─────────────────────────────────────────────────────── */}
+        <main style={{ flex: 1, minWidth: 0, background: '#F7F5F0', overflowY: 'auto' }}>
+          <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 44px 80px' }}>
+            {tab === 'findings'  && <EngineResults />}
+            {tab === 'how'       && <HowItWorksTab />}
+            {tab === 'workflows' && <PracticeWorkflowsTab />}
+            {tab === 'fees'      && <FeeEstimateTab />}
+            {tab === 'market'    && <MarketContextTab />}
+          </div>
+        </main>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer style={{ background: NAVY, padding: '14px 0', marginTop: 'auto' }}>
-        <div className="max-w-7xl mx-auto px-4 text-center" style={{ fontSize: 11, color: 'rgba(255,255,255,0.30)', fontFamily: "'IBM Plex Mono', monospace" }}>
-          NZ Trust Account Integrity Engine · Grounded Deterministic Verification System · Localized Law &amp; Accountancy SME Proposition
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }
