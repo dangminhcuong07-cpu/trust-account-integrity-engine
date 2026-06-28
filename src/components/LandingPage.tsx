@@ -52,9 +52,10 @@ export default function LandingPage({ onEnterDemo }: Props) {
             Trust-account compliance for NZ law firms — before you sign the monthly certificate.
           </h1>
 
-          {/* Subhead — Correction 1 */}
+          {/* Subhead — Fix 2a */}
           <p style={{ fontSize: 17, lineHeight: 1.55, color: '#BEC8DA', maxWidth: '58ch', margin: '0 0 32px', fontWeight: 400 }}>
-            Reads your ledger export, runs seven deterministic rules against the relevant LCA clauses, and produces a dated exception report you can put in front of an inspector.
+            Reads your ledger export, runs seven deterministic rules against the relevant LCA clauses, and produces a dated exception report you can put in front of an inspector.{' '}
+            Unlike an AI assistant, the output is reproducible — the same ledger produces the same report every run, which means you can put it in front of an inspector and defend every number in it.
           </p>
 
           {/* Privacy statement — Correction 1 */}
@@ -130,12 +131,10 @@ export default function LandingPage({ onEnterDemo }: Props) {
               How figures are produced
             </div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', lineHeight: 2, marginBottom: 10 }}>
-              <div>Seven deterministic Python functions.</div>
-              <div>Each rule maps to a specific LCA clause.</div>
-              <div>Same input → same output, always.</div>
+              <div>Same input. Same result. Every time.</div>
             </div>
             <div style={{ fontSize: 13, color: '#6B6B7A', lineHeight: 1.6 }}>
-              No statistical inference. No machine learning.
+              Balances are computed in Python from your CSV columns — not estimated by an AI. The calculation is traceable to the source row. You can verify every figure yourself.
             </div>
           </div>
 
@@ -154,6 +153,42 @@ export default function LandingPage({ onEnterDemo }: Props) {
               <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#C8A84B', letterSpacing: 1, marginBottom: 18 }}>{f.no}</div>
               <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 17, margin: '0 0 12px', color: '#1B2A4A' }}>{f.title}</h3>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: '#4A4A5A' }}>{f.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── What this adds — Fix 3 ───────────────────────────────────────── */}
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '56px 48px 24px' }}>
+        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 22, margin: '0 0 10px', color: '#1B2A4A' }}>
+          What your practice management system does — and what this adds on top
+        </h2>
+        <p style={{ margin: '0 0 28px', fontSize: 15, color: '#6E7B96', maxWidth: '64ch', lineHeight: 1.6 }}>
+          Your system records transactions and produces a monthly reconciliation. This engine checks what the reconciliation cannot see.
+        </p>
+        <div style={{ background: '#F7F5F0', border: '1px solid #D4CFC8', borderLeft: '3px solid #C8284B', borderRadius: 4 }}>
+          {[
+            {
+              body: 'Your system will not tell you a client ledger went negative intra-month before being corrected at month-end. This engine flags it the moment it happens.',
+              citation: 'LCA Reg 12(6)(a)',
+            },
+            {
+              body: 'Your system will not tell you a fee or disbursement entry has no rendered invoice on file. This engine flags it.',
+              citation: 'LCA Reg 9',
+            },
+            {
+              body: 'Your system will not produce a dated Statement of Diligence you can hand to an inspector as evidence the review was conducted systematically. This engine produces one. Every run.',
+              citation: 'LCA (Trust Account) Regulations 2008, Reg 17',
+            },
+          ].map((row, i, arr) => (
+            <div key={row.citation} style={{ padding: '16px 20px', borderBottom: i < arr.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <span style={{ color: '#C8284B', fontSize: 16, fontWeight: 700, flexShrink: 0, lineHeight: 1.4 }}>✗</span>
+                <div>
+                  <p style={{ margin: '0 0 6px', fontSize: 14, color: '#1B2A4A', lineHeight: 1.65 }}>{row.body}</p>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#8A8576' }}>{row.citation}</span>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -239,21 +274,22 @@ export default function LandingPage({ onEnterDemo }: Props) {
             <p style={{ margin: '0 0 20px', fontSize: 13, lineHeight: 1.6, color: '#9AA5BC' }}>
               All figures shown in this engine are derived from synthetic NZ trust ledger data created for demonstration. They do not represent any real firm, client, matter, or trust account.
             </p>
-            {/* Contact — Correction 8 */}
+            {/* Contact — Fix 4 */}
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.10)', paddingTop: 20 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 13, color: '#9AA5BC' }}>Request a walkthrough</p>
               <a
                 href="https://www.linkedin.com/in/michael-dang-964622193/"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#C8A84B', color: '#1B2A4A', fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 13, fontWeight: 600, textDecoration: 'none', borderRadius: 4, padding: '10px 18px', marginBottom: 10 }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#C8A84B', textDecoration: 'none', marginBottom: 16 }}
               >
-                Request a walkthrough <ExternalLink style={{ width: 13, height: 13 }} />
+                Connect on LinkedIn ↗
               </a>
-              <p style={{ margin: '8px 0 4px', fontSize: 13, color: '#9AA5BC' }}>
-                Direct message on LinkedIn. Solo practice — no support ticket system.
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9AA5BC', lineHeight: 1.6, maxWidth: '40ch' }}>
+                Runs entirely on your machine. If this service were discontinued tomorrow, your reports keep running — the engine has no dependency on external uptime, cloud storage, or my personal availability.
               </p>
               <p style={{ margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#6E7B96', letterSpacing: 0.5 }}>
-                Sole developer, Auckland, New Zealand.
+                Built in Auckland, New Zealand. Sole developer — direct contact, no support queue.
               </p>
             </div>
           </div>

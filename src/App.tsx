@@ -34,6 +34,45 @@ function HowItWorksTab() {
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Process</div>
       <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 14px', color: '#1B2A4A' }}>How It Works</h1>
       <p style={{ margin: '0 0 34px', fontSize: 16, color: '#4A4A5A', maxWidth: '62ch' }}>Four steps, run on your own machine. No upload, no account, no data leaving your office.</p>
+
+      {/* Pre-flight format notice — Fix 6 */}
+      <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '22px 24px', marginBottom: 36 }}>
+        <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 14, margin: '0 0 18px', color: '#1B2A4A' }}>Before you run: what the engine expects</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 32px' }}>
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, color: '#1B2A4A', marginBottom: 6 }}>Dates</div>
+            <p style={{ margin: 0, fontSize: 13, color: '#3A3A4A', lineHeight: 1.65 }}>
+              YYYY-MM-DD (ISO format). If your system exports DD/MM/YYYY, open the CSV in Excel and format the date column as YYYY-MM-DD before saving. Support for additional date formats is on the roadmap.
+            </p>
+          </div>
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, color: '#1B2A4A', marginBottom: 6 }}>Amounts</div>
+            <p style={{ margin: 0, fontSize: 13, color: '#3A3A4A', lineHeight: 1.65 }}>
+              Plain numbers without currency symbols or commas (e.g. 15000.00, not $15,000.00 or (15,000.00)). Negative amounts should use a minus sign, not brackets.
+            </p>
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, color: '#1B2A4A', marginBottom: 6 }}>Column names</div>
+            <p style={{ margin: 0, fontSize: 13, color: '#3A3A4A', lineHeight: 1.65 }}>
+              If your system uses different column names than the engine expects, add a [column_map] section to your config file. The onboarding guide explains how.
+            </p>
+          </div>
+        </div>
+        <div style={{ marginTop: 18, background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 4, padding: '12px 16px' }}>
+          <p style={{ margin: '0 0 6px', fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
+            Running on a LEAP or Actionstep export for the first time? Contact us before your first run — we can verify your export format maps correctly before you rely on the output.
+          </p>
+          <a
+            href="https://www.linkedin.com/in/michael-dang-964622193/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#92400E', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            Connect on LinkedIn <ExternalLink style={{ width: 11, height: 11 }} />
+          </a>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {steps.map((s, i) => (
           <div key={s.no} style={{ display: 'grid', gridTemplateColumns: '64px 1fr', gap: 24, padding: '24px 0', borderBottom: i < steps.length - 1 ? '1px solid #D4CFC8' : 'none' }}>
@@ -131,6 +170,53 @@ function MarketContextTab() {
         <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: '#3A3A4A' }}>
           The Trust Account Integrity Engine does the mechanical part of that review consistently and on the record — so the supervisor's judgement is spent on the findings, not on finding them.
         </p>
+      </div>
+
+      {/* Recent NZ Cases — Fix 5 */}
+      <div style={{ marginBottom: 36 }}>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: '#8A8576', marginBottom: 14 }}>
+          Recent NZ Cases and Figures
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[
+            {
+              border: '#C8284B',
+              heading: 'Strike-off: $700,000 misappropriated',
+              body: "In 2024, Aaron Nicholls was struck off after misappropriating $700,000 from client trust accounts over several years. The Lawyers' Fidelity Fund paid $400,000 to six claimants, with three further claims totalling $224,000 pending at the time of the decision.",
+              citationLabel: 'NZLS Disciplinary Tribunal, 2024',
+              citationUrl: 'https://www.lawsociety.org.nz/lawyers-complaints-service/decisions/new-zealand-lawyers-and-conveyancers-disciplinary-tribunal/aaron-nicholls-struck-off-for-misappropriating-client-funds/',
+            },
+            {
+              border: '#C8284B',
+              heading: 'Inspectorate reviewed 1 in 5 practices last year',
+              body: 'The NZLS Inspectorate reviewed 263 trust accounts in the 2024/25 year — approximately one in five of all trust-account-operating practices nationwide. Reviews are conducted on a risk basis; a prior clean review does not exempt a firm from future selection.',
+              citationLabel: 'NZLS Annual Report 2024/25',
+              citationUrl: 'https://www.lawsociety.org.nz/news/newsroom/law-societys-annual-report-released/',
+            },
+            {
+              border: '#C87028',
+              heading: 'The TAS signs personally — every month',
+              body: 'The Trust Account Supervisor carries personal, non-delegable responsibility for the monthly certification under Reg 17. Filing a false certificate is itself a disciplinary breach, regardless of whether the underlying error was intentional.',
+              citationLabel: 'LCA (Trust Account) Regulations 2008, reg 17',
+              citationUrl: 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html',
+            },
+          ].map(fact => (
+            <div key={fact.heading} style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderLeft: `3px solid ${fact.border}`, borderRadius: 4, padding: '18px 22px' }}>
+              <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 13, margin: '0 0 8px', color: '#1B2A4A' }}>{fact.heading}</h3>
+              <p style={{ margin: '0 0 10px', fontSize: 13, color: '#4A5568', lineHeight: 1.65 }}>{fact.body}</p>
+              <a
+                href={fact.citationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#1B2A4A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+              >
+                {fact.citationLabel} <ExternalLink style={{ width: 12, height: 12, flexShrink: 0 }} />
+              </a>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Regulatory References — Correction 7 */}
