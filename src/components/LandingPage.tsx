@@ -54,7 +54,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
 
           {/* Subhead — Fix 2a */}
           <p style={{ fontSize: 17, lineHeight: 1.55, color: '#BEC8DA', maxWidth: '58ch', margin: '0 0 32px', fontWeight: 400 }}>
-            Reads your ledger export, runs seven deterministic rules against the relevant LCA clauses, and produces a dated exception report you can put in front of an inspector.{' '}
+            Reads your ledger export, runs seven deterministic rules against the relevant LCA clauses, and produces a dated exception report.{' '}
             Unlike an AI assistant, the output is reproducible — the same ledger produces the same report every run, which means you can put it in front of an inspector and defend every number in it.
           </p>
 
