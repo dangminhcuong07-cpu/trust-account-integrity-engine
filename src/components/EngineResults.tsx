@@ -9,7 +9,7 @@ const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/la
 const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
 
 function regUrl(citation: string): string {
-  if (citation.startsWith('NZLS') || citation.includes('PS-2') || citation.includes('Guidelines')) return NZLS_URL;
+  if (citation.startsWith('NZLS') || citation.includes('LTAG') || citation.includes('(guidance)')) return NZLS_URL;
   return LCA_URL;
 }
 

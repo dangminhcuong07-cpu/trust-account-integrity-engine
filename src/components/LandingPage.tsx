@@ -9,17 +9,17 @@ const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/la
 const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
 
 function isNzls(citation: string): boolean {
-  return citation.startsWith('NZLS') || citation.includes('PS-2') || citation.includes('Guidelines');
+  return citation.startsWith('NZLS') || citation.includes('LTAG') || citation.includes('(guidance)');
 }
 
 const RULES = [
-  { id: 'R01', code: 'LCA Reg 12(6)(a)',           rule: 'Client ledger must not be overdrawn',                  severity: 'CRITICAL' },
-  { id: 'R02', code: 'NZLS Guidelines s4.3',        rule: 'Dormant balance — no activity beyond 365 days',        severity: 'HIGH'     },
-  { id: 'R03', code: 'LCA Reg 12(1)',               rule: 'Monthly reconciliation break — ledger ≠ bank',         severity: 'CRITICAL' },
-  { id: 'R04', code: 'LCA Reg 11',                  rule: 'Bank statement line with no matching ledger entry',     severity: 'HIGH'     },
-  { id: 'R05', code: 'LCA Reg 12(1)',               rule: 'Unreconciled ledger entry exceeds 30 days',            severity: 'HIGH'     },
-  { id: 'R06', code: 'NZLS PS-2 (eff. 1 Jan 2026)', rule: 'FIT balance held beyond 14-day transfer deadline',     severity: 'HIGH'     },
-  { id: 'R07', code: 'LCA Reg 9',                   rule: 'Fee or disbursement entry lacks invoice reference',     severity: 'HIGH'     },
+  { id: 'R01', code: 'LCA Reg 6 / Reg 12(6)(a)',   rule: 'Trust accounts must not be overdrawn — overdraw flagged at entry level',             severity: 'CRITICAL' },
+  { id: 'R02', code: 'LCA Reg 12(7); LTAG 2024',   rule: 'Client statements at intervals not exceeding 12 months — dormant balance check',     severity: 'HIGH'     },
+  { id: 'R03', code: 'LCA Reg 17 (with Reg 11)',    rule: 'Monthly reconciliation certificate — ledger must equal bank balance',                severity: 'CRITICAL' },
+  { id: 'R04', code: 'LCA Reg 11',                  rule: 'Bank statement line with no matching ledger entry',                                  severity: 'HIGH'     },
+  { id: 'R05', code: 'LCA Reg 11 / Reg 17',         rule: 'Unreconciled ledger entry exceeds 30-day posting threshold',                         severity: 'HIGH'     },
+  { id: 'R06', code: 'LCA 2006 s110; Reg 8/9',      rule: 'FIT balance held beyond firm-policy transfer deadline',                              severity: 'HIGH'     },
+  { id: 'R07', code: 'LCA Reg 9',                   rule: 'Fee or disbursement entry lacks invoice reference',                                  severity: 'HIGH'     },
 ];
 
 const FEES = [
@@ -103,9 +103,9 @@ export default function LandingPage({ onEnterDemo }: Props) {
               Regulations checked
             </div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', lineHeight: 2, marginBottom: 10 }}>
-              <div>LCA Reg 12(6)(a) · Reg 12(1)</div>
-              <div>LCA Reg 11 · Reg 9 · NZLS s4.3</div>
-              <div>NZLS PS-2 (eff. 1 Jan 2026)</div>
+              <div>LCA Reg 6 · Reg 12(6)(a) · Reg 17</div>
+              <div>LCA Reg 11 · Reg 9 · Reg 12(7)</div>
+              <div>LCA 2006 s110; Reg 8/Reg 9</div>
             </div>
             <div style={{ fontSize: 13, color: '#6B6B7A', lineHeight: 1.6 }}>
               Seven clauses evaluated against every transaction in the export.
