@@ -8,9 +8,12 @@ const GREEN = '#2A6B3C';
 const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html';
 const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
 
-function regUrl(citation: string): string {
-  if (citation.startsWith('NZLS') || citation.includes('LTAG') || citation.includes('(guidance)')) return NZLS_URL;
-  return LCA_URL;
+type SourceKind = 'LCA' | 'NZLS' | 'INTERNAL';
+
+function sourceKind(citation: string): SourceKind {
+  if (citation.includes('no statutory basis') || citation.startsWith('Internal control')) return 'INTERNAL';
+  if (citation.startsWith('NZLS') || citation.includes('LTAG') || citation.includes('(guidance)')) return 'NZLS';
+  return 'LCA';
 }
 
 const sorted = [...violations].sort((a, b) => {
@@ -75,7 +78,8 @@ export default function EngineResults() {
           const color   = isCrit ? RED : AMBER;
           const border  = isCrit ? '#E8B0BD' : '#E8C8A8';
           const tint    = isCrit ? '#FBEEF1' : '#FBF3EA';
-          const href    = regUrl(v.nzLawSocietyRule);
+          const kind    = sourceKind(v.nzLawSocietyRule);
+          const href    = kind === 'NZLS' ? NZLS_URL : kind === 'LCA' ? LCA_URL : null;
           return (
             <div key={`${v.ruleId}-${i}`} style={{ background: '#FFFFFF', border: `1px solid #D4CFC8`, borderLeft: `4px solid ${color}`, borderRadius: 4, padding: '20px 24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -84,14 +88,22 @@ export default function EngineResults() {
                   {v.severity}
                 </span>
                 {/* Regulation badge — clickable (Correction 6 Placement 2) */}
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: color, border: `1px solid ${border}`, borderRadius: 3, padding: '3px 9px', background: tint, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                >
-                  {v.nzLawSocietyRule} <ExternalLink style={{ width: 10, height: 10, flexShrink: 0 }} />
-                </a>
+                {href ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: color, border: `1px solid ${border}`, borderRadius: 3, padding: '3px 9px', background: tint, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    {v.nzLawSocietyRule} <ExternalLink style={{ width: 10, height: 10, flexShrink: 0 }} />
+                  </a>
+                ) : (
+                  <span
+                    style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: color, border: `1px solid ${border}`, borderRadius: 3, padding: '3px 9px', background: tint, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    {v.nzLawSocietyRule}
+                  </span>
+                )}
                 {/* Record ID */}
                 <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576', marginLeft: 'auto' }}>
                   Record {v.sourceRecordId}
