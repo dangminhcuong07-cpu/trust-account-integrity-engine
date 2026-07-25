@@ -60,7 +60,7 @@ export default function EngineResults() {
       {/* ── Explainer ─────────────────────────────────────────────────────── */}
       <div style={{ background: '#FBFAF7', border: '1px solid #D4CFC8', borderLeft: '3px solid #1B2A4A', borderRadius: 4, padding: '18px 22px', marginBottom: 34 }}>
         <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: '#3A3A4A' }}>
-          These results come from running the Trust Account Integrity Engine against synthetic NZ trust ledger data containing 7 deliberately seeded compliance breaches. The engine processed the data deterministically in Python; no AI is in the arithmetic path.
+          These results come from running the Trust Account Integrity Engine against synthetic NZ trust ledger data containing {reportSummary.totalViolations} deliberately seeded compliance breaches. The engine processed the data deterministically in Python; no AI is in the arithmetic path.
         </p>
       </div>
 
