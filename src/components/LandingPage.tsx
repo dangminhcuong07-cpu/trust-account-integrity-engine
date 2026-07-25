@@ -8,8 +8,12 @@ interface Props {
 const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html';
 const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
 
-function isNzls(citation: string): boolean {
-  return citation.startsWith('NZLS') || citation.includes('LTAG') || citation.includes('(guidance)');
+type SourceKind = 'LCA' | 'NZLS' | 'INTERNAL';
+
+function sourceKind(citation: string): SourceKind {
+  if (citation.includes('no statutory basis') || citation.startsWith('Internal control')) return 'INTERNAL';
+  if (citation.startsWith('NZLS') || citation.includes('LTAG') || citation.includes('(guidance)')) return 'NZLS';
+  return 'LCA';
 }
 
 const RULES = [
@@ -20,6 +24,10 @@ const RULES = [
   { id: 'R05', code: 'LCA Reg 11 / Reg 17',         rule: 'Unreconciled ledger entry exceeds 30-day posting threshold',                         severity: 'HIGH'     },
   { id: 'R06', code: 'LCA 2006 s110; Reg 8/9',      rule: 'FIT balance held beyond firm-policy transfer deadline',                              severity: 'HIGH'     },
   { id: 'R07', code: 'LCA Reg 9',                   rule: 'Fee or disbursement entry lacks invoice reference',                                  severity: 'HIGH'     },
+  { id: 'R08', code: 'LCA Reg 9',                   rule: 'Fee invoice reference not found in the invoice register',                            severity: 'HIGH'     },
+  { id: 'R09', code: 'Internal control (no statutory basis)', rule: 'Fee payment exceeds the authorised invoice amount',                        severity: 'HIGH'     },
+  { id: 'R10', code: 'LCA Reg 9',                   rule: 'Invoice issue date is after the fee payment date',                                    severity: 'HIGH'     },
+  { id: 'R12', code: 'LCA Reg 12(1)(b) / Reg 11',   rule: 'Bulk bank deposit not fully allocated to client ledger entries',                      severity: 'CRITICAL' },
 ];
 
 const FEES = [
@@ -54,7 +62,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
 
           {/* Subhead — Fix 2a */}
           <p style={{ fontSize: 17, lineHeight: 1.55, color: '#BEC8DA', maxWidth: '58ch', margin: '0 0 32px', fontWeight: 400 }}>
-            Reads your ledger export, runs seven deterministic rules against the relevant LCA clauses, and produces a dated exception report.{' '}
+            Reads your ledger export, runs {RULES.length} deterministic rules against the relevant LCA clauses, and produces a dated exception report.{' '}
             Unlike an AI assistant, the output is reproducible — the same ledger produces the same report every run, which means you can put it in front of an inspector and defend every number in it.
           </p>
 
@@ -108,7 +116,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
               <div>LCA 2006 s110; Reg 8/Reg 9</div>
             </div>
             <div style={{ fontSize: 13, color: '#6B6B7A', lineHeight: 1.6 }}>
-              Seven clauses evaluated against every transaction in the export.
+              {RULES.length} clauses evaluated against every transaction in the export.
             </div>
           </div>
 
@@ -145,7 +153,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
       <div style={{ maxWidth: 1080, margin: '0 auto', padding: '72px 48px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
           {[
-            { no: '01', title: 'Deterministic rule engine', body: 'Seven trust-account rules evaluated in Python. No AI in the arithmetic path; the same input always produces the same result.' },
+            { no: '01', title: 'Deterministic rule engine', body: `${RULES.length} trust-account rules evaluated in Python. No AI in the arithmetic path; the same input always produces the same result.` },
             { no: '02', title: 'Inspectorate-ready output', body: 'A PDF exception report and a Statement of Diligence evidence pack, formatted for the NZLS Inspectorate.' },
             { no: '03', title: 'Direct from your system', body: 'Ingests CSV and Excel exports from LEAP, Actionstep, and Infinitylaw. No migration, no re-keying.' },
           ].map(f => (
@@ -196,7 +204,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
 
       {/* ── Regulations table — Correction 3 + Correction 6 Placement 1 ─── */}
       <div style={{ maxWidth: 1080, margin: '0 auto', padding: '56px 48px 24px' }}>
-        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 28, margin: '0 0 8px', color: '#1B2A4A' }}>The seven rules</h2>
+        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 28, margin: '0 0 8px', color: '#1B2A4A' }}>The {RULES.length} rules</h2>
         <p style={{ margin: '0 0 28px', fontSize: 15, color: '#4A4A5A', maxWidth: '64ch' }}>
           Each rule maps to a specific clause of the 2008 Regulations. The engine evaluates every transaction against the relevant clause and records the outcome.
         </p>
@@ -209,8 +217,9 @@ export default function LandingPage({ onEnterDemo }: Props) {
           </div>
           {RULES.map((r, i) => {
             const isCrit = r.severity === 'CRITICAL';
-            const href = isNzls(r.code) ? NZLS_URL : LCA_URL;
-            const label = isNzls(r.code) ? 'NZLS' : 'LCA';
+            const kind = sourceKind(r.code);
+            const href = kind === 'NZLS' ? NZLS_URL : kind === 'LCA' ? LCA_URL : null;
+            const label = kind === 'NZLS' ? 'NZLS' : kind === 'LCA' ? 'LCA' : 'Internal';
             return (
               <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 110px 80px', alignItems: 'center', padding: '16px 24px', borderBottom: i < RULES.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
                 <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#1B2A4A' }}>{r.code}</div>
@@ -221,9 +230,13 @@ export default function LandingPage({ onEnterDemo }: Props) {
                   </span>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <a href={href} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#1B2A4A', textDecoration: 'none', borderBottom: '1px solid #C8A84B', paddingBottom: 1 }}>
-                    {label} <ExternalLink style={{ width: 10, height: 10, flexShrink: 0 }} />
-                  </a>
+                  {href ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#1B2A4A', textDecoration: 'none', borderBottom: '1px solid #C8A84B', paddingBottom: 1 }}>
+                      {label} <ExternalLink style={{ width: 10, height: 10, flexShrink: 0 }} />
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 11, color: '#8A8576' }}>{label}</span>
+                  )}
                 </div>
               </div>
             );

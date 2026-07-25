@@ -26,7 +26,7 @@ function HowItWorksTab() {
   const steps = [
     { no: '01', title: 'Export', body: 'Export your trust ledger, client ledger, and reconciliation as CSV or Excel from LEAP, Actionstep, or Infinitylaw.' },
     { no: '02', title: 'Ingest', body: 'The engine reads the export on your own machine and normalises it to a common ledger model. Nothing is uploaded.' },
-    { no: '03', title: 'Evaluate', body: 'Seven regulation rules run deterministically in Python. Each transaction is tested against the relevant clause of the 2008 Regulations.' },
+    { no: '03', title: 'Evaluate', body: 'Eleven regulation rules run deterministically in Python. Each transaction is tested against the relevant clause of the 2008 Regulations.' },
     { no: '04', title: 'Report', body: 'A PDF exception report and a Statement of Diligence evidence pack are written to disk, ready for your monthly certification and the NZLS Inspectorate.' },
   ];
   return (
