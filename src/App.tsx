@@ -12,7 +12,8 @@ const NAV_DEFS: { id: Tab; label: string }[] = [
   { id: 'findings',  label: 'Compliance Findings' },
   { id: 'how',       label: 'How It Works' },
   { id: 'workflows', label: 'Practice Workflows' },
-  { id: 'fees',      label: 'Fee Estimate' },
+  // Fee Estimate hidden: pricing is not decided, and the demo is linked from
+  // research requests, not sales. The tab's code stays below for later.
   { id: 'market',    label: 'Market Context' },
 ];
 

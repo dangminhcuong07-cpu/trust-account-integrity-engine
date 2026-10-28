@@ -32,6 +32,10 @@ const RULES = [
   { id: 'R14', code: 'LCA Reg 14',                  rule: 'Reconciliation not certified within the statutory deadline',                         severity: 'HIGH'     },
 ];
 
+// Pricing is not decided and the demo is linked from research requests, so the
+// fee table stays hidden until it is.
+const SHOW_PRICING = false;
+
 const FEES = [
   { name: 'Monthly review',    scope: 'One trust account — ledger ingestion, 13-rule evaluation, PDF exception report, Statement of Diligence pack', fee: '$199 / month' },
   { name: 'Multi-principal',   scope: 'Up to 5 trust accounts — consolidated exception report across all accounts, each evaluated separately',      fee: '$349 / month' },
@@ -257,7 +261,8 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </div>
       </div>
 
-      {/* ── Fees section — Correction 4 (landing page location) ──────────── */}
+      {/* ── Fees section — hidden while pricing is undecided (SHOW_PRICING) ── */}
+      {SHOW_PRICING && (
       <div style={{ maxWidth: 1080, margin: '0 auto', padding: '56px 48px 24px' }}>
         <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 28, margin: '0 0 8px', color: '#1B2A4A' }}>Fee estimate</h2>
         <p style={{ margin: '0 0 6px', fontSize: 15, color: '#4A4A5A', maxWidth: '64ch' }}>
@@ -281,6 +286,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
           All figures NZD, exclusive of GST (+15%). Invoiced monthly or annually. Cancel by email with 30 days notice. No setup fee. No automatic renewal.
         </p>
       </div>
+      )}
 
       {/* ── Footer — Correction 8 ─────────────────────────────────────────── */}
       <footer style={{ marginTop: 48, background: '#1B2A4A', color: '#AEB8CC' }}>
