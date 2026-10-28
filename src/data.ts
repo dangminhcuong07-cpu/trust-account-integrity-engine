@@ -430,7 +430,7 @@ export const complianceChecks: ComplianceCheck[] = [
     "id": "R14_RECONCILIATION_TIMING",
     "name": "Reconciliation not certified within statutory deadline (not evaluated \u2014 no reconciliation_date column in input)",
     "nzlsReference": "Regulation 14 \u2014 Lawyers and Conveyancers Act (Trust Account) Regulations 2008",
-    "status": "passed",
+    "status": "not_evaluated",
     "resultCount": 0,
     "description": "Reconciliation not certified within statutory deadline (not evaluated \u2014 no reconciliation_date column in input) \u2014 Regulation 14 \u2014 Lawyers and Conveyancers Act (Trust Account) Regulations 2008"
   }

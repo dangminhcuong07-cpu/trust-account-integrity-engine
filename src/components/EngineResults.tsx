@@ -5,6 +5,7 @@ import { violations, complianceChecks, reportSummary } from '../data';
 const RED   = '#C8284B';
 const AMBER = '#C87028';
 const GREEN = '#2A6B3C';
+const GREY  = '#8A8576';
 const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html';
 const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
 
@@ -15,6 +16,9 @@ function sourceKind(citation: string): SourceKind {
   if (citation.startsWith('NZLS') || citation.includes('LTAG') || citation.includes('(guidance)')) return 'NZLS';
   return 'LCA';
 }
+
+const notEvaluated   = complianceChecks.filter(c => c.status === 'not_evaluated');
+const evaluatedCount = complianceChecks.length - notEvaluated.length;
 
 const sorted = [...violations].sort((a, b) => {
   if (a.severity === b.severity) return a.ruleId.localeCompare(b.ruleId);
@@ -119,7 +123,7 @@ export default function EngineResults() {
       {/* ── Compliance checks — Correction 3 regulation codes ─────────────── */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 22, margin: 0, color: '#1B2A4A' }}>Compliance checks</h2>
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576' }}>{complianceChecks.length} rules evaluated</span>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576' }}>{evaluatedCount} of {complianceChecks.length} rules evaluated</span>
       </div>
       <div className="wide-table tabular" style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden', marginBottom: 30 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr 90px 96px', padding: '13px 22px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
@@ -129,14 +133,15 @@ export default function EngineResults() {
           <div style={{ textAlign: 'right' }}>Result</div>
         </div>
         {complianceChecks.map((c, i) => {
+          const notRun   = c.status === 'not_evaluated';
           const isPassed = c.status === 'passed';
-          const color    = isPassed ? GREEN : RED;
-          const label    = isPassed ? 'PASS' : 'FAIL';
+          const color    = notRun ? GREY : isPassed ? GREEN : RED;
+          const label    = notRun ? 'N/A' : isPassed ? 'PASS' : 'FAIL';
           return (
             <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '220px 1fr 90px 96px', alignItems: 'center', padding: '15px 22px', borderBottom: i < complianceChecks.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
               <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', lineHeight: 1.4 }}>{c.nzlsReference}</div>
               <div style={{ fontSize: 14, color: '#1A1A2E' }}>{c.name}</div>
-              <div style={{ textAlign: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#6B6B7A' }}>{c.resultCount}</div>
+              <div style={{ textAlign: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#6B6B7A' }}>{notRun ? '—' : c.resultCount}</div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, letterSpacing: 0.5, color }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }}></span>{label}
@@ -146,6 +151,13 @@ export default function EngineResults() {
           );
         })}
       </div>
+
+      {notEvaluated.length > 0 && (
+        <p style={{ margin: '-18px 0 30px', fontSize: 13, color: '#6B6B7A', lineHeight: 1.6, maxWidth: '72ch' }}>
+          <strong style={{ color: '#4A4A5A' }}>N/A</strong> means the rule was not run: the sample data does not contain the fields it needs
+          ({notEvaluated.map(c => c.id.slice(0, 3)).join(', ')} needs a reconciliation date). It is not a pass.
+        </p>
+      )}
 
       {/* ── Actions ───────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 14 }}>
