@@ -33,7 +33,7 @@ export default function EngineResults() {
       <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 22px', color: '#1B2A4A' }}>Compliance Findings</h1>
 
       {/* ── Summary cards — Correction 5 (real engine data) ───────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 30 }}>
+      <div className="stack-sm-2 tabular" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 30 }}>
         <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '18px 20px' }}>
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8576', marginBottom: 9 }}>Firm</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#1B2A4A', lineHeight: 1.35 }}>{reportSummary.firmName}</div>
@@ -121,7 +121,7 @@ export default function EngineResults() {
         <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 22, margin: 0, color: '#1B2A4A' }}>Compliance checks</h2>
         <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576' }}>{complianceChecks.length} rules evaluated</span>
       </div>
-      <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden', marginBottom: 30 }}>
+      <div className="wide-table tabular" style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden', marginBottom: 30 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr 90px 96px', padding: '13px 22px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
           <div>Regulation</div>
           <div>Check</div>

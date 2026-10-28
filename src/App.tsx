@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import EngineResults from './components/EngineResults';
 import LandingPage from './components/LandingPage';
@@ -38,7 +38,7 @@ function HowItWorksTab() {
       {/* Pre-flight format notice — Fix 6 */}
       <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '22px 24px', marginBottom: 36 }}>
         <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 14, margin: '0 0 18px', color: '#1B2A4A' }}>Before you run: what the engine expects</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 32px' }}>
+        <div className="stack-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 32px' }}>
           <div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, color: '#1B2A4A', marginBottom: 6 }}>Dates</div>
             <p style={{ margin: 0, fontSize: 13, color: '#3A3A4A', lineHeight: 1.65 }}>
@@ -100,7 +100,7 @@ function PracticeWorkflowsTab() {
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Practice</div>
       <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 14px', color: '#1B2A4A' }}>Practice Workflows</h1>
       <p style={{ margin: '0 0 34px', fontSize: 16, color: '#4A4A5A', maxWidth: '62ch' }}>Where the engine fits into the obligations a Trust Account Supervisor already carries.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+      <div className="stack-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
         {workflows.map(w => (
           <div key={w.title} style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: 24 }}>
             <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 16, margin: '0 0 10px', color: '#1B2A4A' }}>{w.title}</h3>
@@ -124,7 +124,7 @@ function FeeEstimateTab() {
       </p>
 
       {/* Pricing table — Correction 4 */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden', marginBottom: 18 }}>
+      <div className="wide-table" style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden', marginBottom: 18 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 150px', padding: '13px 24px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
           <div>Engagement</div>
           <div>Scope</div>
@@ -209,8 +209,7 @@ function MarketContextTab() {
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#1B2A4A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-                onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                className="link-u"
               >
                 {fact.citationLabel} <ExternalLink style={{ width: 12, height: 12, flexShrink: 0 }} />
               </a>
@@ -232,8 +231,7 @@ function MarketContextTab() {
               target="_blank"
               rel="noopener noreferrer"
               style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, borderBottom: '1px solid transparent' }}
-              onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-              onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+              className="link-u"
             >
               {r.label} <ExternalLink style={{ width: 12, height: 12, flexShrink: 0, color: '#C8A84B' }} />
             </a>
@@ -247,16 +245,23 @@ function MarketContextTab() {
 export default function App() {
   const [tab, setTab] = useState<Tab>('findings');
   const [showLanding, setShowLanding] = useState(true);
+  const mainRef = useRef<HTMLElement>(null);
+
+  // A new tab starts at its top, not at the previous tab's scroll position.
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+    window.scrollTo(0, 0);
+  }, [tab]);
 
   if (showLanding) {
     return <LandingPage onEnterDemo={() => setShowLanding(false)} />;
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F5F0', fontFamily: "'IBM Plex Sans', sans-serif", color: '#1A1A2E', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-shell" style={{ background: '#F7F5F0', fontFamily: "'IBM Plex Sans', sans-serif", color: '#1A1A2E', display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header style={{ background: '#1B2A4A', color: '#FFFFFF', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', flexShrink: 0 }}>
+      <header className="app-header" style={{ background: '#1B2A4A', color: '#FFFFFF', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
           <span style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 18, fontWeight: 500 }}>Trust Account Integrity Engine</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, borderLeft: '1px solid rgba(255,255,255,0.18)', paddingLeft: 18 }}>
@@ -265,6 +270,7 @@ export default function App() {
           </span>
         </div>
         <button
+          className="press"
           onClick={() => setShowLanding(true)}
           style={{ background: 'none', border: 'none', color: '#C7D0E0', fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 13, cursor: 'pointer', padding: '6px 0' }}
         >
@@ -273,17 +279,19 @@ export default function App() {
       </header>
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div className="app-body" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
 
         {/* ── Sidebar — Correction 9 (5 tabs, no LedgerSandbox) ───────────── */}
-        <aside style={{ width: 264, flexShrink: 0, background: '#1B2A4A', color: '#FFFFFF', display: 'flex', flexDirection: 'column', padding: '26px 0' }}>
-          <div style={{ padding: '0 24px 18px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6E7B96' }}>Review</div>
+        <aside className="app-aside" style={{ width: 264, flexShrink: 0, background: '#1B2A4A', color: '#FFFFFF', display: 'flex', flexDirection: 'column', padding: '26px 0' }}>
+          <div className="aside-label" style={{ padding: '0 24px 18px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6E7B96' }}>Review</div>
           <nav style={{ display: 'flex', flexDirection: 'column' }}>
             {NAV_DEFS.map(n => {
               const active = n.id === tab;
               return (
                 <button
                   key={n.id}
+                  className="press"
+                  aria-current={active ? 'page' : undefined}
                   onClick={() => setTab(n.id)}
                   style={{
                     textAlign: 'left',
@@ -305,7 +313,7 @@ export default function App() {
           </nav>
 
           {/* Regulation Scope card — Correction 6 Placement 3 */}
-          <div style={{ marginTop: 'auto', padding: 24 }}>
+          <div className="aside-scope" style={{ marginTop: 'auto', padding: 24 }}>
             <div style={{ border: '1px solid rgba(255,255,255,0.14)', borderRadius: 4, padding: 16 }}>
               <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6E7B96', marginBottom: 10 }}>Regulation Scope</div>
               <div style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 14, lineHeight: 1.4, color: '#FFFFFF', marginBottom: 10 }}>
@@ -336,8 +344,8 @@ export default function App() {
         </aside>
 
         {/* ── Content ─────────────────────────────────────────────────────── */}
-        <main style={{ flex: 1, minWidth: 0, background: '#F7F5F0', overflowY: 'auto' }}>
-          <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 44px 80px' }}>
+        <main ref={mainRef} className="app-main" style={{ flex: 1, minWidth: 0, background: '#F7F5F0' }}>
+          <div className="app-content" style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 44px 80px' }}>
             {tab === 'findings'  && <EngineResults />}
             {tab === 'how'       && <HowItWorksTab />}
             {tab === 'workflows' && <PracticeWorkflowsTab />}

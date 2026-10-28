@@ -79,6 +79,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
           {/* CTA — Correction 1 */}
           <div style={{ marginBottom: 36 }}>
             <button
+              className="press"
               onClick={onEnterDemo}
               style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 15, fontWeight: 600, background: '#C8A84B', color: '#1B2A4A', border: 'none', borderRadius: 4, padding: '14px 28px', cursor: 'pointer', letterSpacing: 0.2 }}
             >
@@ -106,7 +107,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
 
       {/* ── Trust bar — Correction 2 (3 columns) ─────────────────────────── */}
       <div style={{ background: '#F2EFE8', borderBottom: '1px solid #D4CFC8' }}>
-        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '36px 48px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }}>
+        <div className="stack-sm" style={{ maxWidth: 1080, margin: '0 auto', padding: '36px 48px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }}>
 
           <div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 12 }}>
@@ -153,7 +154,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
 
       {/* ── Features — 3 cards (Mockup 2) ────────────────────────────────── */}
       <div style={{ maxWidth: 1080, margin: '0 auto', padding: '72px 48px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+        <div className="stack-sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
           {[
             { no: '01', title: 'Deterministic rule engine', body: `${RULES.length} trust-account rules evaluated in Python. No AI in the arithmetic path; the same input always produces the same result.` },
             { no: '02', title: 'Inspectorate-ready output', body: 'A PDF exception report and a Statement of Diligence evidence pack, formatted for the NZLS Inspectorate.' },
@@ -210,7 +211,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
         <p style={{ margin: '0 0 28px', fontSize: 15, color: '#4A4A5A', maxWidth: '64ch' }}>
           Each rule maps to a specific clause of the 2008 Regulations. The engine evaluates every transaction against the relevant clause and records the outcome.
         </p>
-        <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden' }}>
+        <div className="wide-table" style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 110px 80px', padding: '14px 24px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
             <div>Regulation</div>
             <div>Rule</div>
@@ -247,6 +248,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
 
         <div style={{ marginTop: 24 }}>
           <button
+            className="press"
             onClick={onEnterDemo}
             style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 14, fontWeight: 600, background: 'none', border: 'none', color: '#1B2A4A', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #C8A84B', paddingBottom: 2 }}
           >
@@ -261,7 +263,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
         <p style={{ margin: '0 0 6px', fontSize: 15, color: '#4A4A5A', maxWidth: '64ch' }}>
           Runs locally — your data never leaves your office. No cloud storage, no external processing.
         </p>
-        <div style={{ margin: '24px 0', background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden' }}>
+        <div className="wide-table" style={{ margin: '24px 0', background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 150px', padding: '13px 24px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
             <div>Engagement</div>
             <div>Scope</div>

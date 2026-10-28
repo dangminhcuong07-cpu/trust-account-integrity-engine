@@ -1,8 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "IBM Plex Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "IBM Plex Serif", "Outfit", serif;
-  --font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "IBM Plex Serif", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ── Interaction feedback ────────────────────────────────────────────────
+   Feedback on press, not release; visible keyboard focus; hover that also
+   works for keyboard users. */
+.press { transition: transform 100ms ease-out; }
+.press:active { transform: scale(0.97); }
+button:focus-visible, a:focus-visible { outline: 2px solid #C8A84B; outline-offset: 2px; }
+.link-u:hover, .link-u:focus-visible { text-decoration: underline !important; }
+.tabular { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) {
+  .press, .press:active { transition: none; transform: none; }
+}
+
+/* ── App shell ───────────────────────────────────────────────────────────
+   The sidebar stays in view while the findings scroll. Below 760px the
+   sidebar becomes a sticky tab bar and wide tables scroll sideways,
+   instead of squeezing content into a ~100px column. Inline styles win over
+   classes, hence !important inside the media query. */
+.app-shell { height: 100vh; height: 100dvh; }
+.app-aside, .app-main { overflow-y: auto; }
+
+@media (max-width: 760px) {
+  .app-shell { height: auto; min-height: 100vh; }
+  .app-header { height: auto !important; min-height: 56px; padding: 10px 16px !important; flex-wrap: wrap; gap: 8px; }
+  .app-body { flex-direction: column; }
+  .app-aside { width: auto !important; padding: 0 !important; position: sticky; top: 0; z-index: 5; overflow: visible; }
+  .app-aside .aside-label, .app-aside .aside-scope { display: none !important; }
+  .app-aside nav { flex-direction: row !important; overflow-x: auto; }
+  .app-aside nav button { white-space: nowrap; padding: 12px 16px !important; }
+  .app-main { overflow: visible; }
+  .app-content { padding: 24px 16px 60px !important; }
+  .wide-table { overflow-x: auto !important; }
+  .wide-table > div { min-width: 640px; }
+  .stack-sm { grid-template-columns: 1fr !important; }
+  .stack-sm-2 { grid-template-columns: 1fr 1fr !important; }
 }
