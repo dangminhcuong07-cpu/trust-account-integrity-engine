@@ -13,6 +13,8 @@
 .press { transition: transform 100ms ease-out; }
 .press:active { transform: scale(0.97); }
 button:focus-visible, a:focus-visible { outline: 2px solid #C8A84B; outline-offset: 2px; }
+/* The sidebar and phone tab bar scroll, which clips an outside outline: draw it inside. */
+.app-aside nav button:focus-visible { outline-offset: -2px; }
 .link-u:hover, .link-u:focus-visible { text-decoration: underline !important; }
 .tabular { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {

@@ -13,7 +13,7 @@ synthetic data: an exception report view with per-violation evidence and
 regulation citations, the 13 rules and their clauses, and a downloadable
 sample report. Fully static — no backend, no uploads, no client data.
 
-The rules engine, 609-test suite, and verified regulation mapping live in
+The rules engine, 600+ test suite, and verified regulation mapping live in
 the [core repository](https://github.com/dangminhcuong07-cpu/trust-account-integrity-engine-core),
 which is the main artifact of this project.
 
