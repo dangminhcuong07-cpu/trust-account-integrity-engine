@@ -28,10 +28,12 @@ const RULES = [
   { id: 'R09', code: 'Internal control (no statutory basis)', rule: 'Fee payment exceeds the authorised invoice amount',                        severity: 'HIGH'     },
   { id: 'R10', code: 'LCA Reg 9',                   rule: 'Invoice issue date is after the fee payment date',                                    severity: 'HIGH'     },
   { id: 'R12', code: 'LCA Reg 12(1)(b) / Reg 11',   rule: 'Bulk bank deposit not fully allocated to client ledger entries',                      severity: 'CRITICAL' },
+  { id: 'R13', code: 'LCA Reg 6',                   rule: 'Trust bank account running balance goes negative',                                   severity: 'CRITICAL' },
+  { id: 'R14', code: 'LCA Reg 14',                  rule: 'Reconciliation not certified within the statutory deadline',                         severity: 'HIGH'     },
 ];
 
 const FEES = [
-  { name: 'Monthly review',    scope: 'One trust account — ledger ingestion, 7-rule evaluation, PDF exception report, Statement of Diligence pack', fee: '$199 / month' },
+  { name: 'Monthly review',    scope: 'One trust account — ledger ingestion, 13-rule evaluation, PDF exception report, Statement of Diligence pack', fee: '$199 / month' },
   { name: 'Multi-principal',   scope: 'Up to 5 trust accounts — consolidated exception report across all accounts, each evaluated separately',      fee: '$349 / month' },
   { name: 'Inspection pack',   scope: 'Statement of Diligence evidence pack formatted for the NZLS Inspectorate, includes 12-month findings history', fee: '$499 (one-off)' },
 ];

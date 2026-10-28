@@ -17,7 +17,7 @@ const NAV_DEFS: { id: Tab; label: string }[] = [
 ];
 
 const FEES = [
-  { name: 'Monthly review',  scope: 'One trust account — ledger ingestion, 7-rule evaluation, PDF exception report, Statement of Diligence pack', fee: '$199 / month' },
+  { name: 'Monthly review',  scope: 'One trust account — ledger ingestion, 13-rule evaluation, PDF exception report, Statement of Diligence pack', fee: '$199 / month' },
   { name: 'Multi-principal', scope: 'Up to 5 trust accounts — consolidated exception report across all accounts, each evaluated separately',      fee: '$349 / month' },
   { name: 'Inspection pack', scope: 'Statement of Diligence evidence pack formatted for the NZLS Inspectorate, includes 12-month findings history', fee: '$499 (one-off)' },
 ];
@@ -26,7 +26,7 @@ function HowItWorksTab() {
   const steps = [
     { no: '01', title: 'Export', body: 'Export your trust ledger, client ledger, and reconciliation as CSV or Excel from LEAP, Actionstep, or Infinitylaw.' },
     { no: '02', title: 'Ingest', body: 'The engine reads the export on your own machine and normalises it to a common ledger model. Nothing is uploaded.' },
-    { no: '03', title: 'Evaluate', body: 'Eleven regulation rules run deterministically in Python. Each transaction is tested against the relevant clause of the 2008 Regulations.' },
+    { no: '03', title: 'Evaluate', body: 'Thirteen regulation rules run deterministically in Python. Each transaction is tested against the relevant clause of the 2008 Regulations.' },
     { no: '04', title: 'Report', body: 'A PDF exception report and a Statement of Diligence evidence pack are written to disk, ready for your monthly certification and the NZLS Inspectorate.' },
   ];
   return (
@@ -311,7 +311,7 @@ export default function App() {
               <div style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 14, lineHeight: 1.4, color: '#FFFFFF', marginBottom: 10 }}>
                 Lawyers and Conveyancers Act (Trust Account) Regulations 2008
               </div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#9AA5BC', letterSpacing: 0.5, marginBottom: 14 }}>7 rules · New Zealand</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#9AA5BC', letterSpacing: 0.5, marginBottom: 14 }}>13 rules · New Zealand</div>
               {/* Source links — Correction 6 Placement 3 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <a

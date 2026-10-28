@@ -290,7 +290,7 @@ export const complianceWorkflows = [
   {
     phase: 'Day 2–5',
     title: 'Deterministic Rules Sweep',
-    description: 'The compliance engine evaluates all 7 rule filters against the ingested data — overdraw detection, dormancy checks, 3-way reconciliation, unmatched bank lines, FIT holdover, and invoice references.',
+    description: 'The compliance engine evaluates all 13 rule filters against the ingested data — overdraw detection, dormancy checks, 3-way reconciliation, unmatched bank lines, FIT holdover, and invoice references.',
     action: 'Each violation is grounded with evidence (record ID, amount, date, regulation citation) and written to the violations register with UNRESOLVED status.'
   },
   {
@@ -348,7 +348,7 @@ export const productsData = [
     title: 'Trust Integrity Engine',
     description: 'The foundational compliance product. Connects to bank feeds and practice management systems to run nightly deterministic sweeps across all trust accounts.',
     features: [
-      '7-rule compliance filter suite (overdraw, dormancy, reconciliation, FIT, invoice, unmatched lines)',
+      '13-rule compliance filter suite (overdraw, dormancy, reconciliation, FIT, invoice, unmatched lines)',
       'Real-time 3-way reconciliation dashboard',
       'Automated violation register with evidence grounding',
       'Partner sign-off workflow and audit trail export'
