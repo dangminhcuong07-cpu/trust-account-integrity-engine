@@ -63,7 +63,9 @@ export interface ComplianceCheck {
   name: string;
   description: string;
   nzlsReference: string;
-  status: 'passed' | 'failed' | 'warning';
+  // not_evaluated: the input lacked the fields the rule needs (e.g. R14 without a
+  // reconciliation_date column), so it never ran. It must never render as a pass.
+  status: 'passed' | 'failed' | 'warning' | 'not_evaluated';
   resultCount: number;
 }
 
