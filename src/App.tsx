@@ -1,323 +1,170 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import EngineResults from './components/EngineResults';
-import LandingPage from './components/LandingPage';
-import { complianceChecks } from './data';
+import LandingPage, { type EnterOptions } from './components/LandingPage';
+import { reportSummary } from './data';
+import { CHECKS, LCA_URL, LINKEDIN_URL, NOT_RUN, NZLS_URL, STATUTORY_COUNT } from './lib/rules';
 
-// Rule count comes from the engine-generated data, never typed by hand.
-const RULE_COUNT = complianceChecks.length;
+type Tab = 'findings' | 'how' | 'workflows' | 'context';
 
-const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html';
-const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
-
-type Tab = 'findings' | 'how' | 'workflows' | 'market';
-
-const NAV_DEFS: { id: Tab; label: string }[] = [
-  { id: 'findings',  label: 'Compliance Findings' },
-  { id: 'how',       label: 'How It Works' },
-  { id: 'workflows', label: 'Practice Workflows' },
-  // No Fee Estimate tab: pricing is not decided, and the prices were readable
-  // in the public JS bundle even while hidden. Restore from git history if needed.
-  { id: 'market',    label: 'Market Context' },
+const NAV: { id: Tab; label: string; count?: number }[] = [
+  { id: 'findings', label: 'Exception report', count: reportSummary.totalViolations },
+  { id: 'how', label: 'How it works' },
+  { id: 'workflows', label: 'Practice workflows' },
+  { id: 'context', label: 'Regulations and context' },
 ];
 
-function HowItWorksTab() {
+function Mark() {
+  // A ledger line with a tick: the report's own mark.
+  return (
+    <svg className="ap-mark" viewBox="0 0 22 22" aria-hidden="true">
+      <rect width="22" height="22" rx="6" fill="#333231" />
+      <path d="M5 7h12M5 11h5M5 15h4" stroke="#cdc3b6" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="m11.5 14 2.2 2.2 3.8-4.6" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function HowItWorks() {
   const steps = [
-    { no: '01', title: 'Export', body: 'Export your trust ledger, client ledger, and reconciliation as CSV or Excel from LEAP, Actionstep, or Infinitylaw.' },
-    { no: '02', title: 'Ingest', body: 'The engine reads the export on your own machine and normalises it to a common ledger model. Nothing is uploaded.' },
-    { no: '03', title: 'Evaluate', body: `${RULE_COUNT} rules run deterministically in Python. Each transaction is tested against the relevant clause of the 2008 Regulations.` },
-    { no: '04', title: 'Report', body: 'A PDF exception report and a Statement of Diligence evidence pack are written to disk, ready for your monthly certification and to help you prepare for an inspection.' },
+    { title: 'Export', body: 'Export the client ledger, trust bank statement, invoice register, matters, allocations and reconciliations as CSV from your practice system.' },
+    { title: 'Read', body: 'The engine reads the files on your own computer and maps them to one ledger model. Nothing is uploaded.' },
+    { title: 'Check', body: `${CHECKS.length} checks run as written rules: ${STATUTORY_COUNT} follow the Trust Account Regulations 2008 and one is an internal control.` },
+    { title: 'Report', body: 'A dated PDF exception report and an evidence pack are written to disk, ready for your monthly certificate.' },
   ];
   return (
-    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Process</div>
-      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 14px', color: '#1B2A4A' }}>How It Works</h1>
-      <p style={{ margin: '0 0 34px', fontSize: 16, color: '#4A4A5A', maxWidth: '62ch' }}>Four steps, run on your own machine. No upload, no account, no data leaving your office.</p>
-
-      {/* Pre-flight format notice — Fix 6 */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '22px 24px', marginBottom: 36 }}>
-        <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 14, margin: '0 0 18px', color: '#1B2A4A' }}>Before you run: what the engine expects</h3>
-        <div className="stack-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 32px' }}>
-          <div>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, color: '#1B2A4A', marginBottom: 6 }}>Dates</div>
-            <p style={{ margin: 0, fontSize: 13, color: '#3A3A4A', lineHeight: 1.65 }}>
-              YYYY-MM-DD (ISO format). If your system exports DD/MM/YYYY, open the CSV in Excel and format the date column as YYYY-MM-DD before saving. Support for additional date formats is on the roadmap.
-            </p>
-          </div>
-          <div>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, color: '#1B2A4A', marginBottom: 6 }}>Amounts</div>
-            <p style={{ margin: 0, fontSize: 13, color: '#3A3A4A', lineHeight: 1.65 }}>
-              Plain numbers without currency symbols or commas (e.g. 15000.00, not $15,000.00 or (15,000.00)). Negative amounts should use a minus sign, not brackets.
-            </p>
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, color: '#1B2A4A', marginBottom: 6 }}>Column names</div>
-            <p style={{ margin: 0, fontSize: 13, color: '#3A3A4A', lineHeight: 1.65 }}>
-              If your system uses different column names than the engine expects, add a [column_map] section to your config file. The onboarding guide explains how.
-            </p>
-          </div>
+    <div className="ap-col">
+      <div className="ap-titlerow"><div><h1>How it works</h1><p className="ap-sub">Four steps on your own computer. No account, no upload.</p></div></div>
+      <section className="ap-card ap-section" aria-label="Steps">
+        <ol className="ap-steps">
+          {steps.map(s => <li key={s.title}><h3>{s.title}</h3><p>{s.body}</p></li>)}
+        </ol>
+      </section>
+      <section className="ap-card ap-section" aria-labelledby="expects-h">
+        <div className="ap-card-h"><h2 id="expects-h">What the files need</h2></div>
+        <div className="ap-two">
+          <div><h3>Dates</h3><p>YYYY-MM-DD. If your system exports DD/MM/YYYY, reformat the date column in Excel before saving.</p></div>
+          <div><h3>Amounts</h3><p>Plain numbers such as 15000.00: no currency signs, commas or brackets. Negative amounts take a minus sign.</p></div>
+          <div><h3>Column names</h3><p>If your system names columns differently, a column map in the config file translates them.</p></div>
+          <div><h3>First run on your own export</h3><p>It has not yet been run on a real firm&rsquo;s export. If you would try it, <a href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">message me first</a> and we can check the mapping together.</p></div>
         </div>
-        <div style={{ marginTop: 18, background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 4, padding: '12px 16px' }}>
-          <p style={{ margin: '0 0 6px', fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
-            Running on a LEAP or Actionstep export for the first time? Contact us before your first run — we can verify your export format maps correctly before you rely on the output.
-          </p>
-          <a
-            href="https://www.linkedin.com/in/michael-dang-964622193/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#92400E', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-          >
-            Connect on LinkedIn <ExternalLink style={{ width: 11, height: 11 }} />
-          </a>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-        {steps.map((s, i) => (
-          <div key={s.no} style={{ display: 'grid', gridTemplateColumns: '64px 1fr', gap: 24, padding: '24px 0', borderBottom: i < steps.length - 1 ? '1px solid #D4CFC8' : 'none' }}>
-            <div style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 30, color: '#C8A84B', fontWeight: 500 }}>{s.no}</div>
-            <div>
-              <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 17, margin: '0 0 8px', color: '#1B2A4A' }}>{s.title}</h3>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: '#3A3A4A', maxWidth: '68ch' }}>{s.body}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      </section>
     </div>
   );
 }
 
-function PracticeWorkflowsTab() {
-  const workflows = [
-    { title: 'Monthly certification', body: 'Run before signing your monthly trust account certificate to surface breaches while they can still be corrected.' },
-    { title: 'Inspectorate preparation', body: 'Generate the Statement of Diligence evidence pack ahead of an NZLS Trust Account inspection.' },
-    { title: 'New supervisor handover', body: "Establish a documented baseline when taking over responsibility for a firm's trust account." },
-    { title: 'Remediation tracking', body: 'Re-run after corrections to confirm a flagged breach has cleared and record the date it did.' },
+function Workflows() {
+  const items = [
+    { title: 'Before the monthly certificate', body: 'Run it on last month before you sign, while a breach can still be explained or corrected.' },
+    { title: 'Before an inspection', body: 'Keep the dated reports as a record that the account was reviewed every month, and what was done about each finding.' },
+    { title: 'Taking over as supervisor', body: 'Run it once on the account you inherit, so you know where it stands on the day you take responsibility.' },
+    { title: 'After a correction', body: 'Run it again to confirm a finding has cleared, and keep the date it did.' },
   ];
   return (
-    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Practice</div>
-      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 14px', color: '#1B2A4A' }}>Practice Workflows</h1>
-      <p style={{ margin: '0 0 34px', fontSize: 16, color: '#4A4A5A', maxWidth: '62ch' }}>Where the engine fits into the obligations a Trust Account Supervisor already carries.</p>
-      <div className="stack-sm" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-        {workflows.map(w => (
-          <div key={w.title} style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: 24 }}>
-            <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 16, margin: '0 0 10px', color: '#1B2A4A' }}>{w.title}</h3>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: '#3A3A4A' }}>{w.body}</p>
-          </div>
-        ))}
-      </div>
+    <div className="ap-col">
+      <div className="ap-titlerow"><div><h1>Practice workflows</h1><p className="ap-sub">Where it fits into what a Trust Account Supervisor already does.</p></div></div>
+      <section className="ap-card ap-section" aria-label="Workflows">
+        <div className="ap-two">{items.map(w => <div key={w.title}><h3>{w.title}</h3><p>{w.body}</p></div>)}</div>
+      </section>
     </div>
   );
 }
 
-function MarketContextTab() {
-  const regRefs = [
-    { label: 'Lawyers and Conveyancers Act 2006, ss 110–116', url: 'https://www.legislation.govt.nz/act/public/2006/0001/latest/whole.html' },
-    { label: 'Lawyers and Conveyancers Act (Trust Account) Regulations 2008', url: LCA_URL },
-    { label: "NZLS Lawyers' Trust Accounting Guidelines (June 2024)", url: NZLS_URL },
-    { label: 'NZLS Inspectorate — Trust Account Reviews', url: 'https://www.lawsociety.org.nz/professional-practice/legal-practice/trust-account-management/' },
+function Context() {
+  const facts = [
+    { h: 'Every own-account practice with a trust account is inspected', b: 'The NZLS Inspectorate visits on a risk-based cycle. It reviewed 263 trust accounts in 2024/25.', cite: 'NZLS Annual Report 2024/25', url: 'https://www.lawsociety.org.nz/news/newsroom/law-societys-annual-report-released/' },
+    { h: 'The certificate is due on the 10th working day', b: 'For the month before; for December, the 15th working day of January. If the account does not reconcile, the certificate is still filed on time, with an explanation. Late certificates are recorded and passed to the inspectors.', cite: 'NZLS trust account certificates FAQ', url: 'https://www.lawsociety.org.nz/professional-practice/legal-practice/trust-account-management/trust-account-certificates-faqs/' },
+    { h: 'Misused trust money ends careers', b: 'In 2024 a lawyer was struck off after misappropriating $700,000 from client trust accounts. The Lawyers’ Fidelity Fund paid six claimants.', cite: 'NZ Lawyers and Conveyancers Disciplinary Tribunal, 2024', url: 'https://www.lawsociety.org.nz/lawyers-complaints-service/decisions/new-zealand-lawyers-and-conveyancers-disciplinary-tribunal/aaron-nicholls-struck-off-for-misappropriating-client-funds/' },
+  ];
+  const refs = [
+    { label: 'Lawyers and Conveyancers Act 2006, ss 110–116', url: 'https://www.legislation.govt.nz/act/public/2006/0001/latest/whole.html', kind: 'Act' },
+    { label: 'Lawyers and Conveyancers Act (Trust Account) Regulations 2008', url: LCA_URL, kind: 'Regulations' },
+    { label: 'NZLS Lawyers’ Trust Accounting Guidelines, June 2024', url: NZLS_URL, kind: 'Guidance' },
+    { label: 'NZLS trust account management and the Inspectorate', url: 'https://www.lawsociety.org.nz/professional-practice/legal-practice/trust-account-management/', kind: 'Guidance' },
   ];
   return (
-    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Context</div>
-      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 22px', color: '#1B2A4A' }}>Market Context</h1>
-
-      {/* Mockup 2 three paragraphs — kept exactly */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '32px 36px', maxWidth: '72ch', marginBottom: 36 }}>
-        <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.7, color: '#3A3A4A' }}>
-          Every New Zealand law firm that holds client money must appoint a Trust Account Supervisor. That person certifies, each month, that the firm's trust account complies with the 2008 Regulations — and carries personal responsibility for the certification.
-        </p>
-        <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.7, color: '#3A3A4A' }}>
-          The review behind that certificate is still largely manual: exporting ledgers, reconciling by hand, and reading for exceptions. The work is exacting, repetitive, and unforgiving of a missed entry.
-        </p>
-        <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: '#3A3A4A' }}>
-          The Trust Account Integrity Engine does the mechanical part of that review consistently and on the record — so the supervisor's judgement is spent on the findings, not on finding them.
-        </p>
-      </div>
-
-      {/* Recent NZ Cases — Fix 5 */}
-      <div style={{ marginBottom: 36 }}>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: '#8A8576', marginBottom: 14 }}>
-          Recent NZ Cases and Figures
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {[
-            {
-              border: '#C8284B',
-              heading: 'Strike-off: $700,000 misappropriated',
-              body: "In 2024, Aaron Nicholls was struck off after misappropriating $700,000 from client trust accounts over several years. The Lawyers' Fidelity Fund paid $400,000 to six claimants, with three further claims totalling $224,000 pending at the time of the decision.",
-              citationLabel: 'NZLS Disciplinary Tribunal, 2024',
-              citationUrl: 'https://www.lawsociety.org.nz/lawyers-complaints-service/decisions/new-zealand-lawyers-and-conveyancers-disciplinary-tribunal/aaron-nicholls-struck-off-for-misappropriating-client-funds/',
-            },
-            {
-              border: '#C8284B',
-              heading: 'Inspectorate reviewed 1 in 5 practices last year',
-              body: 'The NZLS Inspectorate reviewed 263 trust accounts in the 2024/25 year — approximately one in five of all trust-account-operating practices nationwide. Reviews are conducted on a risk basis; a prior clean review does not exempt a firm from future selection.',
-              citationLabel: 'NZLS Annual Report 2024/25',
-              citationUrl: 'https://www.lawsociety.org.nz/news/newsroom/law-societys-annual-report-released/',
-            },
-            {
-              border: '#C87028',
-              heading: 'The TAS signs personally — every month',
-              body: 'The Trust Account Supervisor carries personal, non-delegable responsibility for the monthly certification under Reg 17. Filing a false certificate is itself a disciplinary breach, regardless of whether the underlying error was intentional.',
-              citationLabel: 'LCA (Trust Account) Regulations 2008, reg 17',
-              citationUrl: 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html',
-            },
-          ].map(fact => (
-            <div key={fact.heading} style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderLeft: `3px solid ${fact.border}`, borderRadius: 4, padding: '18px 22px' }}>
-              <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 13, margin: '0 0 8px', color: '#1B2A4A' }}>{fact.heading}</h3>
-              <p style={{ margin: '0 0 10px', fontSize: 13, color: '#4A5568', lineHeight: 1.65 }}>{fact.body}</p>
-              <a
-                href={fact.citationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#1B2A4A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                className="link-u"
-              >
-                {fact.citationLabel} <ExternalLink style={{ width: 12, height: 12, flexShrink: 0 }} />
-              </a>
-            </div>
+    <div className="ap-col">
+      <div className="ap-titlerow"><div><h1>Regulations and context</h1><p className="ap-sub">Why the review before the certificate matters, with sources.</p></div></div>
+      <section className="ap-card ap-section" aria-labelledby="facts-h">
+        <div className="ap-card-h"><h2 id="facts-h">The rules around the certificate</h2></div>
+        <ul className="ap-refs">
+          {facts.map(f => (
+            <li key={f.h} style={{ flexDirection: 'column', gap: 4 }}>
+              <b style={{ fontWeight: 600 }}>{f.h}</b>
+              <span style={{ color: '#4f4b47', fontSize: 14, whiteSpace: 'normal' }}>{f.b}</span>
+              <a href={f.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13 }}>{f.cite}</a>
+            </li>
           ))}
-        </div>
-      </div>
-
-      {/* Regulatory References — Correction 7 */}
-      <div>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: '#8A8576', marginBottom: 14 }}>
-          Regulatory References
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {regRefs.map(r => (
-            <a
-              key={r.url}
-              href={r.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, borderBottom: '1px solid transparent' }}
-              className="link-u"
-            >
-              {r.label} <ExternalLink style={{ width: 12, height: 12, flexShrink: 0, color: '#C8A84B' }} />
-            </a>
-          ))}
-        </div>
-      </div>
+        </ul>
+      </section>
+      <section className="ap-card ap-section" aria-labelledby="refs-h">
+        <div className="ap-card-h"><h2 id="refs-h">Sources</h2></div>
+        <ul className="ap-refs">
+          {refs.map(r => <li key={r.url}><a href={r.url} target="_blank" rel="noopener noreferrer">{r.label}</a><span>{r.kind}</span></li>)}
+        </ul>
+      </section>
     </div>
   );
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('findings');
-  const [showLanding, setShowLanding] = useState(true);
-  const mainRef = useRef<HTMLElement>(null);
-
-  // A new tab starts at its top, not at the previous tab's scroll position.
+  // #report opens the sample report directly, so it can be linked and bookmarked.
+  const [view, setView] = useState<'landing' | 'app'>(() => (window.location.hash === '#report' ? 'app' : 'landing'));
   useEffect(() => {
-    mainRef.current?.scrollTo(0, 0);
-    window.scrollTo(0, 0);
-  }, [tab, showLanding]);
+    const onHash = () => setView(window.location.hash === '#report' ? 'app' : 'landing');
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  useEffect(() => {
+    if (view === 'app' && window.location.hash !== '#report') history.pushState(null, '', '#report');
+    if (view === 'landing' && window.location.hash === '#report') history.pushState(null, '', window.location.pathname);
+  }, [view]);
+  const [tab, setTab] = useState<Tab>('findings');
+  const [opts, setOpts] = useState<EnterOptions>({});
+  const [menu, setMenu] = useState(false);
 
-  if (showLanding) {
-    return <LandingPage onEnterDemo={() => setShowLanding(false)} />;
+  // A new view starts at its top, not at the previous scroll position.
+  useEffect(() => { window.scrollTo(0, 0); }, [tab, view]);
+  useEffect(() => { document.title = view === 'landing' ? 'TrustSentry: check the trust ledger before you sign' : 'Exception report · TrustSentry sample'; }, [view]);
+
+  if (view === 'landing') {
+    return <LandingPage onEnterDemo={o => { setOpts(o ?? {}); setTab('findings'); setView('app'); }} />;
   }
 
+  const go = (t: Tab) => { setTab(t); setMenu(false); };
+  const current = NAV.find(n => n.id === tab)!;
+
   return (
-    <div className="app-shell" style={{ background: '#F7F5F0', fontFamily: "'IBM Plex Sans', sans-serif", color: '#1A1A2E', display: 'flex', flexDirection: 'column' }}>
-
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="app-header" style={{ background: '#1B2A4A', color: '#FFFFFF', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <span style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 18, fontWeight: 500 }}>Trust Account Integrity Engine</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, borderLeft: '1px solid rgba(255,255,255,0.18)', paddingLeft: 18 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3F9A5C', boxShadow: '0 0 0 3px rgba(63,154,92,0.22)' }}></span>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 0.5, color: '#C7D0E0' }}>Read-Only Mode</span>
-          </span>
-        </div>
-        <button
-          className="press"
-          onClick={() => setShowLanding(true)}
-          style={{ background: 'none', border: 'none', color: '#C7D0E0', fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 13, cursor: 'pointer', padding: '6px 0' }}
-        >
-          ← Back to Overview
-        </button>
-      </header>
-
-      {/* ── Body ───────────────────────────────────────────────────────────── */}
-      <div className="app-body" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-
-        {/* ── Sidebar — Correction 9 (5 tabs, no LedgerSandbox) ───────────── */}
-        <aside className="app-aside" style={{ width: 264, flexShrink: 0, background: '#1B2A4A', color: '#FFFFFF', display: 'flex', flexDirection: 'column', padding: '26px 0' }}>
-          <div className="aside-label" style={{ padding: '0 24px 18px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6E7B96' }}>Review</div>
-          <nav style={{ display: 'flex', flexDirection: 'column' }}>
-            {NAV_DEFS.map(n => {
-              const active = n.id === tab;
-              return (
-                <button
-                  key={n.id}
-                  className="press"
-                  aria-current={active ? 'page' : undefined}
-                  onClick={() => setTab(n.id)}
-                  style={{
-                    textAlign: 'left',
-                    background: active ? '#243C66' : 'transparent',
-                    border: 'none',
-                    borderLeft: `3px solid ${active ? '#C8A84B' : 'transparent'}`,
-                    color: active ? '#FFFFFF' : '#AEB8CC',
-                    fontFamily: "'IBM Plex Sans', sans-serif",
-                    fontSize: 14,
-                    fontWeight: active ? 600 : 400,
-                    padding: '11px 24px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {n.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Regulation Scope card — Correction 6 Placement 3 */}
-          <div className="aside-scope" style={{ marginTop: 'auto', padding: 24 }}>
-            <div style={{ border: '1px solid rgba(255,255,255,0.14)', borderRadius: 4, padding: 16 }}>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6E7B96', marginBottom: 10 }}>Regulation Scope</div>
-              <div style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 14, lineHeight: 1.4, color: '#FFFFFF', marginBottom: 10 }}>
-                Lawyers and Conveyancers Act (Trust Account) Regulations 2008
-              </div>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#9AA5BC', letterSpacing: 0.5, marginBottom: 14 }}>{RULE_COUNT} rules · New Zealand</div>
-              {/* Source links — Correction 6 Placement 3 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <a
-                  href={LCA_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#C8A84B', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                >
-                  ↗ LCA (Trust Account) Regulations 2008
-                </a>
-                <a
-                  href={NZLS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#C8A84B', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                >
-                  ↗ NZLS Trust Accounting Guidelines 2024
-                </a>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* ── Content ─────────────────────────────────────────────────────── */}
-        <main ref={mainRef} className="app-main" style={{ flex: 1, minWidth: 0, background: '#F7F5F0' }}>
-          <div className="app-content" style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 44px 80px' }}>
-            {tab === 'findings'  && <EngineResults />}
-            {tab === 'how'       && <HowItWorksTab />}
-            {tab === 'workflows' && <PracticeWorkflowsTab />}
-            {tab === 'market'    && <MarketContextTab />}
-          </div>
-        </main>
-
+    <div className="ap">
+      <div className="ap-topbar">
+        <b>{current.label}</b>
+        <button onClick={() => setMenu(m => !m)} aria-expanded={menu} aria-controls="ap-side">{menu ? 'Close' : 'Menu'}</button>
       </div>
+      <aside id="ap-side" className={`ap-side${menu ? ' open' : ''}`}>
+        <div className="ap-brand"><Mark />TrustSentry</div>
+        <div className="ap-scope">
+          <b>{reportSummary.firmName} (sample)</b>
+          <span>Trust account · {reportSummary.period}</span>
+        </div>
+        <p className="ap-group">Review</p>
+        <nav className="ap-nav" aria-label="Sample report">
+          {NAV.map(n => (
+            <button key={n.id} aria-current={tab === n.id ? 'page' : undefined} onClick={() => go(n.id)}>
+              <span>{n.label}</span>{n.count !== undefined && <span className="count">{n.count}</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="ap-side-foot">
+          {opts.reviewer && <span>Reviewing as {opts.reviewer}</span>}
+          <span>{CHECKS.length - NOT_RUN.length} of {CHECKS.length} checks run · synthetic data</span>
+          <button onClick={() => setView('landing')}>Back to the overview</button>
+        </div>
+      </aside>
+      <main className="ap-main">
+        {tab === 'findings' && <EngineResults initialFilter={opts.filter} focus={opts.focus} />}
+        {tab === 'how' && <HowItWorks />}
+        {tab === 'workflows' && <Workflows />}
+        {tab === 'context' && <Context />}
+      </main>
     </div>
   );
 }
