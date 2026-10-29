@@ -5,6 +5,7 @@ import { PLAIN_NAME, findingSpan, plainEvidence } from '../lib/plain';
 import { fmtDay, fmtMonth, nextCertificate } from '../lib/dates';
 import { SAMPLE_ROWS, checkRows, nzd, type Row } from '../lib/r01';
 import { useActiveSection, useNow, useScrollMotion } from '../lib/scroll';
+import { Lamp, Nib, Pen, Shelves } from './Objects';
 
 export interface EnterOptions { focus?: string }
 interface Props { onEnterDemo: (o?: EnterOptions) => void }
@@ -35,11 +36,10 @@ const INDEX_IDS = INDEX.map(i => i.id);
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** A section heading with its word drifting behind it, outlined, as the section scrolls past. */
-function SecHead({ id, n, word, children, lede }: { id: string; n: number; word: string; children: ReactNode; lede?: ReactNode }) {
+function SecHead({ id, word, children, lede }: { id: string; word: string; children: ReactNode; lede?: ReactNode }) {
   return (
     <div className="sec-head" data-progress>
       <span className="drift" aria-hidden="true">{word}</span>
-      <p className="sec-n">{pad(n)}</p>
       <h2 id={id}>{children}</h2>
       {lede && <p className="sec-lede">{lede}</p>}
     </div>
@@ -120,6 +120,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
 
       <main id="main">
         <section className="hero" aria-labelledby="hero-h">
+          <div className="library"><Shelves /></div>
           <div className="hero-copy">
             <h1 id="hero-h"><span>Read the exceptions</span> <em>before you sign</em></h1>
             <p className="hero-lede">TrustSentry checks a month of trust ledger, bank statement and invoices on your own computer, and prints a dated exception report: each entry that breaks the Trust Account Regulations, the regulation, and the row it came from.</p>
@@ -130,7 +131,9 @@ export default function LandingPage({ onEnterDemo }: Props) {
           </div>
 
           <div className="stage" data-progress>
+            <Lamp className="lamp" />
             <article className="sheet paper" aria-labelledby="sheet-h">
+              <Pen className="pen" />
               <div className="sheet-title">
                 <b id="sheet-h">Exception report</b>
                 <span>Sample firm · entries {SPAN.from} to {SPAN.to}</span>
@@ -162,7 +165,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </section>
 
         <section id="try" className="wrap sec" aria-labelledby="try-h">
-          <SecHead id="try-h" n={1} word="Try it" lede={<>Four rows from the sample ledger. Change a payment and the overdrawn-ledger check runs again, here in your browser. The engine runs all {CHECKS.length} checks on your own computer.</>}>Try one check yourself</SecHead>
+          <SecHead id="try-h" word="Try it" lede={<>Four rows from the sample ledger. Change a payment and the overdrawn-ledger check runs again, here in your browser. The engine runs all {CHECKS.length} checks on your own computer.</>}>Try one check yourself</SecHead>
           <div className="try" data-reveal>
             <div className="try-in">
               <table className="try-table">
@@ -218,7 +221,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </section>
 
         <section id="finds" className="wrap sec" aria-labelledby="finds-h">
-          <SecHead id="finds-h" n={2} word="Exceptions" lede="Examples from the sample report, in the words the report uses.">What it finds</SecHead>
+          <SecHead id="finds-h" word="Exceptions" lede="Examples from the sample report, in the words the report uses.">What it finds</SecHead>
           <ul className="finds">
             <li data-reveal><h3>A client ledger below zero</h3><p>Even for a day, even if month end looks fine.</p><p className="eg">{eg.ledger}</p></li>
             <li data-reveal><h3>Deposits nobody allocated</h3><p>A bulk deposit has to be split across clients, to the cent.</p><p className="eg">{eg.deposit}</p></li>
@@ -230,7 +233,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </section>
 
         <section id="checks" className="wrap sec" aria-labelledby="checks-h">
-          <SecHead id="checks-h" n={3} word="The checks" lede={<>{STATUTORY_COUNT} cite the Lawyers and Conveyancers Act or its Trust Account Regulations; one is an internal control. The result column is the sample firm’s.</>}>The {CHECKS.length} checks</SecHead>
+          <SecHead id="checks-h" word="The checks" lede={<>{STATUTORY_COUNT} cite the Lawyers and Conveyancers Act or its Trust Account Regulations; one is an internal control. The result column is the sample firm’s.</>}>The {CHECKS.length} checks</SecHead>
           <div className="checks" data-reveal>
             <table>
               <thead><tr><th scope="col">Check</th><th scope="col">What it looks for</th><th scope="col">Source</th><th scope="col" className="res">Sample result</th></tr></thead>
@@ -252,18 +255,18 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </section>
 
         <section id="due" className="wrap sec due" aria-labelledby="due-h">
-          <SecHead id="due-h" n={4} word="Certificate" lede={<>Due {fmtDay(due.due)}: <strong className="num">{due.workingDaysLeft} working {due.workingDaysLeft === 1 ? 'day' : 'days'}</strong> from today, counting Monday to Friday (public holidays are not taken out). The clock runs to the end of that day, in your time zone.</>}>Your {month} certificate</SecHead>
+          <SecHead id="due-h" word="Certificate" lede={<>Due {fmtDay(due.due)}: <strong className="num">{due.workingDaysLeft} working {due.workingDaysLeft === 1 ? 'day' : 'days'}</strong> from today, counting Monday to Friday (public holidays are not taken out). The clock runs to the end of that day, in your time zone.</>}>Your {month} certificate</SecHead>
           <div data-reveal><Countdown due={due.due} /></div>
         </section>
 
         <section id="runs" className="wrap sec" aria-labelledby="runs-h">
-          <SecHead id="runs-h" n={5} word="Four steps">How it runs</SecHead>
+          <SecHead id="runs-h" word="Four steps">How it runs</SecHead>
           <div className="runs">
             <ol>
               <li data-reveal><div><h3>Export</h3><p>Export the month from your practice system as CSV: client ledger, trust bank statement, invoices, matters, allocations and reconciliations.</p></div></li>
               <li data-reveal><div><h3>Check, on your computer</h3><p>The engine reads the files where they already are. Nothing is uploaded and no account is needed.</p></div></li>
               <li data-reveal><div><h3>Read the report</h3><p>A dated PDF lists every exception with its regulation, the record and what to do next.</p></div></li>
-              <li data-reveal><div><h3>Sign, knowing what is behind each figure</h3><p>Note the cause and the fix against each finding, and keep the report with the certificate.</p></div></li>
+              <li data-reveal><div><h3><Nib className="nib" />Sign, knowing what is behind each figure</h3><p>Note the cause and the fix against each finding, and keep the report with the certificate.</p></div></li>
             </ol>
             <figure className="lit" data-reveal>
               <img src="/img/report-page-1.png" width={909} height={1286} loading="lazy" alt="Page 1 of the sample exception report: the firm, period, 23 exceptions, and the first critical finding with its regulation, record and action." />
@@ -273,7 +276,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </section>
 
         <section id="questions" className="wrap sec" aria-labelledby="faq-h">
-          <SecHead id="faq-h" n={6} word="Questions">Questions</SecHead>
+          <SecHead id="faq-h" word="Questions">Questions</SecHead>
           <div className="qs">
             {FAQ.map((f, i) => (
               <details key={f.q} open={i === 0}>
@@ -287,7 +290,6 @@ export default function LandingPage({ onEnterDemo }: Props) {
         <section id="talk" className="ask" aria-labelledby="talk-h">
           <div className="wrap ask-in" data-reveal>
             <div>
-              <p className="sec-n">07</p>
               <h2 id="talk-h">Twenty minutes about certificate week</h2>
               <p>I’m an accounting graduate in Auckland, researching how sole practitioners and small firms prepare the monthly trust account certificate. I’m not selling anything, and I won’t ask for any client data.</p>
               <div className="hero-actions">
