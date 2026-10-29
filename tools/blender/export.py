@@ -44,4 +44,9 @@ meta["pen"] = save(pen.crop(bbox(pen, thresh=10)), "pen.webp", 640)
 nib = Image.open(f"{OUT}/nib.png").convert("RGBA")
 nib = nib.crop((0, round(nib.height * 0.15), nib.width, nib.height))  # the nib only, not the barrel above it
 meta["nib"] = save(nib.crop(bbox(nib, pad=2)), "nib.webp", 32)
+lib = Image.open(f"{OUT}/library.png").convert("RGB")
+for w in (1920, 1080):  # a background behind a darkening mask: lower quality is invisible
+    path = os.path.join(DEST, f"library-{w}.webp")
+    lib.resize((w, round(lib.height * w / lib.width)), Image.LANCZOS).save(path, "WEBP", quality=70, method=6)
+    meta[f"library-{w}"] = {"file": os.path.basename(path), "w": w, "kb": round(os.path.getsize(path) / 1024, 1)}
 print(json.dumps(meta, indent=1))
