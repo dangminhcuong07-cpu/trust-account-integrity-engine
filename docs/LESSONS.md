@@ -16,7 +16,8 @@ One line per lesson: **what happened → the rule → where it's handled.** The 
 - **Two predictions in the apple-design work were wrong:** removing unused font families didn't reduce font downloads (browsers only fetch faces in use), and "tab keeps old scroll" didn't reproduce. Write the prediction down before changing anything, then measure.
 
 ## What the page claims
-- **Pricing is undecided and the demo is linked from research requests** → prices hidden (`SHOW_PRICING = false` on the landing page; the Fee Estimate tab is removed from the navigation). The figures are still in the JS bundle; delete them if pricing must not be public at all.
+- **Hidden prices still shipped**: `SHOW_PRICING = false` hid the table, but `$199/$349/$499` stayed readable in the public JS bundle → anything that must not be public is deleted from source, not hidden; check with `grep` on `dist/assets/*.js` after `npm run build`.
+- **"Formatted for the NZLS Inspectorate" and "Authority · NZLS Inspectorate" implied the regulator set the format or backs the product** → say "to help you prepare for an inspection"; never name the Inspectorate as an authority for the product.
 - **Name the product once.** The page mixes "Trust Account Integrity Engine" and "TrustSentry"; the runbook decision is to pick TrustSentry. Until the rename, say "the engine".
 - **A Gemini SDK dependency in a "no AI in the calculation" product** invites the wrong question → removed with the other unused packages. Removing them alone gave a byte-identical bundle.
 
