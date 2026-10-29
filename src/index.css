@@ -172,6 +172,9 @@ button { font: inherit; color: inherit; }
   46% { opacity: var(--on, 1); } 56% { opacity: calc(var(--on, 1) * 0.55); } 100% { opacity: var(--on, 1); }
 }
 @keyframes breathe { from { opacity: var(--on); } to { opacity: calc(var(--on) * 0.82); } }
+/* The lamp's light on the report: a warm pool at the top-right corner, fading across the
+   paper. Multiply tints the paper without washing out the ink. It switches on with the lamp. */
+.sheet::after { content: ''; --on: 1; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; background: radial-gradient(ellipse 62% 48% at 97% 0%, rgba(255, 190, 110, 0.34), rgba(255, 205, 140, 0.14) 45%, transparent 75%), linear-gradient(200deg, transparent 35%, rgba(60, 45, 30, 0.09)); opacity: var(--on); animation: flicker-on 700ms 1400ms linear both, breathe 4.8s 2100ms ease-in-out infinite alternate; }
 /* The pen lies across the report's lower corner, ready to sign; it drops in and settles. */
 .pen { position: absolute; right: 6px; bottom: 4px; width: 290px; height: auto; pointer-events: none; animation: pen-drop 900ms 1500ms var(--ease-out) both; } /* angle and shadow are in the render */
 @keyframes pen-drop {
@@ -414,5 +417,5 @@ button { font: inherit; color: inherit; }
   .btn:active, .ap-btn:active { transform: none; }
   .sheet { transform: none; }
   .drift { translate: 0 -58%; }
-  .lamp-bulb, .lamp-cone { animation: none; }
+  .lamp-bulb, .lamp-cone, .sheet::after { animation: none; }
 }
