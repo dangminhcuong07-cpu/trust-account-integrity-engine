@@ -152,9 +152,9 @@ button { font: inherit; color: inherit; }
 /* The desk objects move like Polygon Runway's soft 3D models: they spring into
    place with an overshoot, then keep still. Only the lamp's light keeps breathing.
    Order: sheet rises (250ms), lamp pops (700ms), light flickers on (1400ms), pen drops (1500ms). */
-.lamp { position: absolute; z-index: 2; right: -132px; top: -184px; width: 230px; height: auto; pointer-events: none; transform-origin: 50% 100%; filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.55)); animation: pop-in 850ms 700ms var(--ease-out) both; }
+.lamp { position: absolute; z-index: 2; right: -132px; top: -184px; width: 244px; height: auto; pointer-events: none; transform-origin: 50% 100%; filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.55)); animation: pop-in 850ms 700ms var(--ease-out) both; }
 .lamp-bulb { --on: 1; }
-.lamp-cone { --on: 0.38; }
+.lamp-cone { --on: 0.42; }
 .lamp-bulb, .lamp-cone { opacity: var(--on); animation: flicker-on 700ms 1400ms linear both, breathe 4.8s 2100ms ease-in-out infinite alternate; }
 .stage::before { content: ''; position: absolute; z-index: 1; right: -18%; top: -60px; width: 95%; height: 520px; background: radial-gradient(ellipse 50% 45% at 62% 20%, rgba(255, 217, 160, 0.17), transparent 70%); pointer-events: none; mix-blend-mode: screen; animation: flicker-on 700ms 1400ms linear both; }
 @keyframes pop-in {
@@ -169,7 +169,7 @@ button { font: inherit; color: inherit; }
 }
 @keyframes breathe { from { opacity: var(--on); } to { opacity: calc(var(--on) * 0.82); } }
 /* The pen lies across the report's lower corner, ready to sign; it drops in and settles. */
-.pen { position: absolute; right: 28px; bottom: 64px; width: 280px; height: auto; rotate: -21deg; pointer-events: none; filter: drop-shadow(0 5px 4px rgba(43, 42, 40, 0.35)) drop-shadow(0 16px 16px rgba(43, 42, 40, 0.22)); animation: pen-drop 900ms 1500ms var(--ease-out) both; }
+.pen { position: absolute; right: 28px; bottom: 64px; width: 300px; height: auto; rotate: -21deg; pointer-events: none; filter: drop-shadow(-2px 3px 1.5px rgba(30, 28, 25, 0.45)) drop-shadow(-10px 14px 12px rgba(30, 28, 25, 0.22)); animation: pen-drop 900ms 1500ms var(--ease-out) both; }
 @keyframes pen-drop {
   0% { opacity: 0; transform: translate(70px, -60px) rotate(-14deg) scale(1.08); }
   55% { opacity: 1; transform: translate(0, 5px) rotate(2.5deg) scale(1); }
