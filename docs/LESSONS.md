@@ -9,8 +9,10 @@ One line per lesson: **what happened → the rule → where it's handled.** The 
 - **Merge order:** engine PRs first, then regenerate data here, then merge the frontend.
 
 ## Layout and interaction
-- **On a 390px phone the 264px sidebar left a 126px content column** (one word per line) → below 760px the sidebar becomes a sticky tab bar and wide tables scroll sideways (`.app-*`, `.wide-table`, `.stack-sm` in `index.css`). Measure the content column width; "no horizontal overflow" alone missed this, because the column clipped.
-- **Inline styles can't express `:active`, `:hover` or `:focus-visible`**, so buttons had no press feedback and hover was mouse-only JS → use the `.press` and `.link-u` classes and the global focus rule in `index.css`.
+- **The redesign follows the taste-skill sheets in `.taste-skill/` (direction "The product performs", palette "Three stones"; report screen "Achromatic ledger").** Check a change with `inspect.mjs` (and `--app` on `/#report`) before merging: 0 FAIL is the floor. Lines inside product UI that keep a 1px border or dialog shadow carry `taste-skill-ignore`.
+- **Every figure on the overview is computed from `data.ts`** (`src/lib/rules.ts`), including the check counts in headings. The R01 demo (`src/lib/r01.ts`) uses the engine's own sample rows; `src/lib/dates.ts` uses R14's due-date rule. Each file asserts its known values in the console.
+- **On a 390px phone the 264px sidebar left a 126px content column** (one word per line) → below 760px the report's sidebar folds into a 48px top bar with a Menu sheet, and wide tables scroll inside their own card (`.ap-*` in `index.css`). Measure the content column width; "no horizontal overflow" alone missed this, because the column clipped.
+- **Inline styles can't express `:active`, `:hover` or `:focus-visible`** → all styling is in `index.css` classes (`.btn`, `.lp-*` for the overview, `.ap-*` for the report, `.ui` for product fragments). No inline colours.
 - **The focus ring was clipped on scrolling navs** (outline drawn outside an `overflow` box) → nav buttons use `outline-offset: -2px`.
 - **The scroll reset only ran on tab change**, so entering the demo from the bottom of the landing page kept the scroll position → the effect depends on `[tab, showLanding]`.
 - **Two predictions in the apple-design work were wrong:** removing unused font families didn't reduce font downloads (browsers only fetch faces in use), and "tab keeps old scroll" didn't reproduce. Write the prediction down before changing anything, then measure.
@@ -18,10 +20,10 @@ One line per lesson: **what happened → the rule → where it's handled.** The 
 ## What the page claims
 - **Hidden prices still shipped**: `SHOW_PRICING = false` hid the table, but `$199/$349/$499` stayed readable in the public JS bundle → anything that must not be public is deleted from source, not hidden; check with `grep` on `dist/assets/*.js` after `npm run build`.
 - **"Formatted for the NZLS Inspectorate" and "Authority · NZLS Inspectorate" implied the regulator set the format or backs the product** → say "to help you prepare for an inspection"; never name the Inspectorate as an authority for the product.
-- **Name the product once.** The page mixes "Trust Account Integrity Engine" and "TrustSentry"; the runbook decision is to pick TrustSentry. Until the rename, say "the engine".
+- **Name the product once: TrustSentry** (the name the engine's PDF already uses). The page, the report screen and the title all say TrustSentry.
 - **A Gemini SDK dependency in a "no AI in the calculation" product** invites the wrong question → removed with the other unused packages. Removing them alone gave a byte-identical bundle.
 
 ## Known small debts
 - `@types/express`, `tsx`, `esbuild` and the `clean` script (deletes `server.js`) served the removed server. Remove them in a lockfile-only PR.
-- `LedgerSandbox.tsx`, `PricingCalculator.tsx`, `StrategicBrief.tsx` and `WorkflowDesigner.tsx` (about 1,500 lines) aren't rendered. `LedgerSandbox` maps `not_evaluated` to `passed`; fix or delete it before reusing any of them.
-- The FEES table is duplicated in `App.tsx` and `LandingPage.tsx`.
+- The four unrendered components (`LedgerSandbox`, `PricingCalculator`, `StrategicBrief`, `WorkflowDesigner`) and `sandbox_data.ts` were deleted in the redesign; restore from git history if needed.
+- `lucide-react` is no longer imported; remove it in a lockfile-only PR.

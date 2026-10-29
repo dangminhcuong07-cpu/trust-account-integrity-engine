@@ -1,4 +1,4 @@
-# Trust Account Integrity Engine — Demo Frontend
+# TrustSentry — Demo Frontend
 
 React + TypeScript + Vite frontend for the
 [Trust Account Integrity Engine](https://github.com/dangminhcuong07-cpu/trust-account-integrity-engine-core)

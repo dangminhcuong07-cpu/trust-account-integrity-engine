@@ -1,295 +1,430 @@
-import React from 'react';
-import { ExternalLink } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { reportSummary } from '../data';
+import { CHECKS, FINDINGS, GROUPS, LINKEDIN_URL, NOT_RUN, STATUTORY_COUNT, tidy, type Check, type GroupId } from '../lib/rules';
+import { fmtDay, fmtMonth, nextCertificate } from '../lib/dates';
+import { SAMPLE_ROWS, nzd, runR01 } from '../lib/r01';
 
-interface Props {
-  onEnterDemo: () => void;
+export interface EnterOptions { focus?: string; filter?: 'all' | 'critical'; reviewer?: string }
+interface Props { onEnterDemo: (o?: EnterOptions) => void }
+
+const byRecord = (id: string) => FINDINGS.find(f => f.sourceRecordId === id);
+const HERO_ROWS = ['L021', 'R002', 'B031', 'B050'].map(byRecord).filter(Boolean) as typeof FINDINGS;
+
+function Pill({ level, children }: { level: 'crit' | 'high' | 'pass' | 'na'; children: ReactNode }) {
+  return <span className={`pill pill--${level}`}>{children}</span>;
 }
 
-const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html';
-const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
-
-type SourceKind = 'LCA' | 'NZLS' | 'INTERNAL';
-
-function sourceKind(citation: string): SourceKind {
-  if (citation.includes('no statutory basis') || citation.startsWith('Internal control')) return 'INTERNAL';
-  if (citation.startsWith('NZLS') || citation.includes('LTAG') || citation.includes('(guidance)')) return 'NZLS';
-  return 'LCA';
+function Arrow() {
+  return <span className="arrow" aria-hidden="true">→</span>;
 }
 
-const RULES = [
-  { id: 'R01', code: 'LCA Reg 6 / Reg 12(6)(a)',   rule: 'Trust accounts must not be overdrawn — overdraw flagged at entry level',             severity: 'CRITICAL' },
-  { id: 'R02', code: 'LCA Reg 12(7); LTAG 2024',   rule: 'Client statements at intervals not exceeding 12 months — dormant balance check',     severity: 'HIGH'     },
-  { id: 'R03', code: 'LCA Reg 17 (with Reg 11)',    rule: 'Monthly reconciliation certificate — ledger must equal bank balance',                severity: 'CRITICAL' },
-  { id: 'R04', code: 'LCA Reg 11',                  rule: 'Bank statement line with no matching ledger entry',                                  severity: 'HIGH'     },
-  { id: 'R05', code: 'LCA Reg 11 / Reg 17',         rule: 'Unreconciled ledger entry exceeds 30-day posting threshold',                         severity: 'HIGH'     },
-  { id: 'R06', code: 'LCA 2006 s110; Reg 8/9',      rule: 'FIT balance held beyond firm-policy transfer deadline',                              severity: 'HIGH'     },
-  { id: 'R07', code: 'LCA Reg 9',                   rule: 'Fee or disbursement entry lacks invoice reference',                                  severity: 'HIGH'     },
-  { id: 'R08', code: 'LCA Reg 9',                   rule: 'Fee invoice reference not found in the invoice register',                            severity: 'HIGH'     },
-  { id: 'R09', code: 'Internal control (no statutory basis)', rule: 'Fee payment exceeds the authorised invoice amount',                        severity: 'HIGH'     },
-  { id: 'R10', code: 'LCA Reg 9',                   rule: 'Invoice issue date is after the fee payment date',                                    severity: 'HIGH'     },
-  { id: 'R12', code: 'LCA Reg 12(1)(b) / Reg 11',   rule: 'Bulk bank deposit not fully allocated to client ledger entries',                      severity: 'CRITICAL' },
-  { id: 'R13', code: 'LCA Reg 6',                   rule: 'Trust bank account running balance goes negative',                                   severity: 'CRITICAL' },
-  { id: 'R14', code: 'LCA Reg 14',                  rule: 'Reconciliation not certified within the statutory deadline',                         severity: 'HIGH'     },
+function resultPill(c: Check) {
+  if (c.status === 'not_evaluated') return <Pill level="na">Not run</Pill>;
+  if (c.resultCount === 0) return <Pill level="pass">Passed</Pill>;
+  return <Pill level={c.severity === 'critical' ? 'crit' : 'high'}>{c.resultCount} {c.resultCount === 1 ? 'finding' : 'findings'}</Pill>;
+}
+
+/* Reveal the parts of each section as it arrives. Content is visible without JS. */
+function useReveal() {
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll<HTMLElement>('.rv'));
+    if (!('IntersectionObserver' in window)) { els.forEach(e => e.classList.add('in')); return; }
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    els.forEach(e => io.observe(e));
+    const safety = window.setTimeout(() => els.forEach(e => e.classList.add('in')), 4000);
+    return () => { io.disconnect(); window.clearTimeout(safety); };
+  }, []);
+}
+
+function useNzTime() {
+  const fmt = () => new Date().toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: 'numeric', minute: '2-digit' });
+  const [t, setT] = useState(fmt);
+  useEffect(() => { const id = window.setInterval(() => setT(fmt()), 30_000); return () => window.clearInterval(id); }, []);
+  return t;
+}
+
+const FAQ = [
+  { q: 'Does our ledger leave the office?', a: 'No. The engine runs on your own computer and reads files you export. This website only shows its output for a made-up firm; it cannot receive your data.' },
+  { q: 'Is it approved by the Law Society?', a: `No. It is not affiliated with or endorsed by the New Zealand Law Society. ${STATUTORY_COUNT} of its ${CHECKS.length} checks follow the Trust Account Regulations 2008; the other is an internal control.` },
+  { q: 'Does it use AI?', a: 'No AI decides a result. Each check is a written rule, so the same ledger gives the same report every time, and every finding points to the row it came from.' },
+  { q: 'Which practice systems can it read?', a: 'CSV exports, with a column map for your system’s column names. It has not yet been run on a real firm’s export: that is the research I am doing now.' },
+  { q: 'Does it replace my reconciliation?', a: 'No. It is a second look before you sign. You still reconcile, and you still decide what each finding means.' },
+  { q: 'What does it cost?', a: 'Nothing is for sale. I am talking to sole practitioners and trust account administrators first, to learn what certificate week is really like.' },
 ];
 
 export default function LandingPage({ onEnterDemo }: Props) {
+  useReveal();
+  const stageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => stageRef.current?.classList.add('open')));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const due = useMemo(() => nextCertificate(new Date()), []);
+  const [csv, setCsv] = useState(SAMPLE_ROWS);
+  const r01 = useMemo(() => runR01(csv), [csv]);
+  const [group, setGroup] = useState<GroupId>('balances');
+  const [faq, setFaq] = useState(0);
+  const [reviewer, setReviewer] = useState('Trust Account Supervisor');
+  const [filter, setFilter] = useState<'all' | 'critical'>('all');
+  const nzTime = useNzTime();
+
+  const groupChecks = (id: GroupId) => GROUPS.find(g => g.id === id)!.rules.map(code => CHECKS.find(c => c.code === code)!).filter(Boolean);
+  const m028 = FINDINGS.filter(f => f.code === 'R01' && f.evidence.includes('M028'));
+  const balanceOf = (ev: string) => ev.match(/balance (-?\$[\d,.]+)/)?.[1]?.replace('-$', '−$') ?? '';
+  const dateOf = (ev: string) => ev.match(/dated (\d{4}-\d{2}-\d{2})/)?.[1] ?? '';
+
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F5F0', fontFamily: "'IBM Plex Sans', sans-serif", color: '#1A1A2E', fontSize: 15, lineHeight: 1.55, WebkitFontSmoothing: 'antialiased' }}>
+    <div className="lp">
+      {/* ── First screen ─────────────────────────────────────────────────── */}
+      <header className="lp-wrap">
+        <nav className="lp-nav" aria-label="Main">
+          <a className="lp-word" href="#top">TrustSentry <span>· trust account checks</span></a>
+          <ul>
+            <li><a href="#finds">What it finds</a></li>
+            <li><a href="#checks">The checks</a></li>
+            <li><a href="#runs">How it runs</a></li>
+            <li><a href="#questions">Questions</a></li>
+          </ul>
+        </nav>
+      </header>
 
-      {/* ── Nav ────────────────────────────────────────────────────────────── */}
-      <div style={{ background: '#1B2A4A', color: '#FFFFFF' }}>
-        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '30px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
-          <div style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 19, fontWeight: 500, letterSpacing: 0.2 }}>Trust Account Integrity Engine</div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#AEB8CC' }}>New Zealand · Trust Account Compliance</div>
-        </div>
-
-        {/* ── Hero ───────────────────────────────────────────────────────── */}
-        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '72px 48px 80px' }}>
-
-          {/* Eyebrow — Correction 1 */}
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, color: '#C8A84B', textTransform: 'uppercase', marginBottom: 26 }}>
-            Lawyers and Conveyancers Act (Trust Account) Regulations 2008
+      <main id="top">
+        <section className="lp-wrap lp-hero" aria-labelledby="hero-h">
+          <div className="lp-hero-copy">
+            <h1 id="hero-h"><span>Check the ledger</span> <span>before you sign</span></h1>
+            <p>TrustSentry reads a law firm&rsquo;s trust ledger, bank statement and invoices, and lists every entry that breaks the Trust Account Regulations, on your own computer, before the monthly certificate.</p>
+            <button className="btn" onClick={() => onEnterDemo()}>Open the sample report <Arrow /></button>
+            <p className="lp-due">
+              Your next certificate, for {fmtMonth(due.period)}, is due <strong>{fmtDay(due.due)}</strong>:{' '}
+              <strong className="num">{due.workingDaysLeft} working {due.workingDaysLeft === 1 ? 'day' : 'days'}</strong> from today, counting Monday to Friday.
+            </p>
           </div>
 
-          {/* Headline — Correction 1 */}
-          <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 'clamp(28px, 4vw, 38px)', lineHeight: 1.15, letterSpacing: -0.3, margin: '0 0 22px', maxWidth: '22ch', color: '#FFFFFF' }}>
-            Trust-account compliance for NZ law firms — before you sign the monthly certificate.
-          </h1>
-
-          {/* Subhead — Fix 2a */}
-          <p style={{ fontSize: 17, lineHeight: 1.55, color: '#BEC8DA', maxWidth: '58ch', margin: '0 0 32px', fontWeight: 400 }}>
-            Reads your ledger export, runs {RULES.length} deterministic rules against the relevant LCA clauses, and produces a dated exception report.{' '}
-            Unlike an AI assistant, the output is reproducible — the same ledger produces the same report every run, which means you can put it in front of an inspector and defend every number in it.
-          </p>
-
-          {/* Privacy statement — Correction 1 */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(247,245,240,0.06)', border: '1px solid rgba(200,168,75,0.45)', borderRadius: 4, padding: '14px 20px', marginBottom: 32 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3F9A5C', boxShadow: '0 0 0 3px rgba(63,154,92,0.25)', flexShrink: 0 }}></span>
-            <span style={{ fontSize: 14, color: '#6E7B96' }}>
-              <span style={{ fontWeight: 600, color: '#F7F5F0' }}>Runs entirely on your machine.</span> No data leaves your office.
-            </span>
+          <div className="lp-stage" ref={stageRef}>
+            <div className="lp-stage-inner">
+              <div className="ui" data-ui style={{ width: 640, maxWidth: 'none' }}>
+                <div className="ui-head">
+                  <span className="ui-title">Exception report · {reportSummary.firmName} (sample)</span>
+                  <span className="ui-meta num">{reportSummary.period} · {reportSummary.totalViolations} findings</span>
+                </div>
+                {HERO_ROWS.map((f, i) => (
+                  <button
+                    key={f.sourceRecordId}
+                    className={`ui-row${i === 0 ? ' is-hover' : ''}`}
+                    style={{ width: '100%', border: 0, borderBottom: '1px solid var(--ui-rule)', background: undefined, textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
+                    onClick={() => onEnterDemo({ focus: f.sourceRecordId })}
+                    aria-label={`Open finding ${f.sourceRecordId}: ${f.ruleName}`}
+                  >
+                    <span className="num">{f.sourceRecordId}</span>
+                    <span><b style={{ fontWeight: 500 }}>{f.ruleName}</b><span className="ev" style={{ display: 'block' }}>{tidy(f.evidence)}</span></span>
+                    <Pill level="crit">Critical</Pill>
+                  </button>
+                ))}
+                <div className="ui-kv" style={{ background: 'var(--ui-ground)' }}>
+                  <dt>Checks run</dt><dd>{CHECKS.length - NOT_RUN.length} of {CHECKS.length}</dd>
+                  <dt>Critical · High</dt><dd>{reportSummary.criticalCount} · {reportSummary.highCount}</dd>
+                </div>
+              </div>
+            </div>
           </div>
+        </section>
 
-          {/* CTA — Correction 1 */}
-          <div style={{ marginBottom: 36 }}>
-            <button
-              className="press"
-              onClick={onEnterDemo}
-              style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 15, fontWeight: 600, background: '#C8A84B', color: '#1B2A4A', border: 'none', borderRadius: 4, padding: '14px 28px', cursor: 'pointer', letterSpacing: 0.2 }}
-            >
-              Run it on a sample ledger →
-            </button>
+        {/* ── Showcase: the visitor's rows in, the finding out ─────────────── */}
+        <section className="lp-split" aria-label="Try one check" style={{ marginTop: 'clamp(120px, 14vh, 200px)' }}>
+          <div className="lp-in">
+            <label htmlFor="rows" className="rv">client_ledger.csv · four rows from the sample firm. Change a payment.</label>
+            <textarea id="rows" className="rv" style={{ ['--i' as string]: 1 }} value={csv} onChange={e => setCsv(e.target.value)} spellCheck={false} aria-describedby="rows-hint" />
+            <p id="rows-hint" className="hint rv" style={{ ['--i' as string]: 2 }}>This page runs one check, overdrawn client ledgers (R01), on what you type. The engine runs all {CHECKS.length} on your computer.</p>
+            <h2>Your rows</h2>
           </div>
+          <div className="lp-out">
+            <div className="ui lp-out-frag rv" data-ui aria-live="polite" style={{ ['--i' as string]: 1 }}>
+              <div className="ui-head">
+                <span className="ui-title">R01 · Overdrawn client ledger</span>
+                <span className="ui-meta">Reg 6, Reg 12(6)(a)</span>
+              </div>
+              {r01.errors.length > 0 && <p style={{ margin: 0, padding: '12px 18px', color: 'var(--crit)', fontSize: 13 }}>{r01.errors[0]}</p>}
+              <table className="ui-table">
+                <thead><tr><th>Entry</th><th>Matter</th><th>Date</th><th className="r">Balance after</th></tr></thead>
+                <tbody>
+                  {r01.rows.map(r => (
+                    <tr key={r.entry + r.date} className={r.balance < 0 ? 'flag' : undefined}>
+                      <td>{r.entry}</td><td>{r.matter}</td><td>{r.date}</td>
+                      <td className={`r${r.balance < 0 ? ' neg' : ''}`}>{nzd(r.balance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--ui-rule)', background: 'var(--ui-ground)' }}>
+                {r01.findings.length === 0
+                  ? <span>No client ledger goes below zero in these rows.</span>
+                  : r01.findings.map(f => (
+                    <div key={f.entry} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '3px 0' }}>
+                      <Pill level="crit">Critical</Pill>
+                      <span>Matter {f.matter} at <b className="neg num" style={{ fontWeight: 600 }}>{nzd(f.balance)}</b> after {f.entry} on {f.date}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+            <h2>Its findings</h2>
+          </div>
+        </section>
 
-          {/* Trust strip — Correction 8 */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px 28px' }}>
-            {[
-              { icon: '🔒', text: 'NZ data — processed locally, never uploaded' },
-              { icon: '⚖', text: 'Built against LCA (Trust Account) Regulations 2008' },
-              { icon: '👤', text: 'Solo practice — direct contact, no ticket system' },
-            ].map((item, i, arr) => (
-              <React.Fragment key={item.icon}>
-                <span style={{ fontSize: 13, color: '#6E7B96', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span>{item.icon}</span> {item.text}
-                </span>
-                {i < arr.length - 1 && <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 16 }}>·</span>}
-              </React.Fragment>
+        {/* ── What it finds ─────────────────────────────────────────────────── */}
+        <section id="finds" className="lp-wrap lp-features" aria-labelledby="finds-h">
+          <h2 id="finds-h" className="lp-sec-h rv">What it finds</h2>
+          <div className="lp-grid">
+            <article className="lp-cell rv">
+              <div className="lp-cell-text">
+                <h3>A client ledger below zero</h3>
+                <p>Even for a day, even if month end looks fine. Matter M028 went further below zero with each of three entries.</p>
+              </div>
+              <div className="lp-cell-frag">
+                <table className="ui ui-table" data-ui style={{ borderRadius: '8px 0 0 0', borderRight: 0, borderBottom: 0 }}>
+                  <thead><tr><th>Entry</th><th>Date</th><th className="r">M028 balance</th></tr></thead>
+                  <tbody>{m028.map(f => <tr key={f.sourceRecordId} className="flag"><td>{f.sourceRecordId}</td><td>{dateOf(f.evidence)}</td><td className="r neg">{balanceOf(f.evidence)}</td></tr>)}</tbody>
+                </table>
+              </div>
+            </article>
+
+            <article className="lp-cell frag-top frag-right rv" style={{ ['--i' as string]: 1 }}>
+              <div className="lp-cell-text">
+                <h3>Deposits nobody allocated</h3>
+                <p>A bulk deposit has to be split to clients. B046 brought in $9,000.00 and only $7,500.00 was allocated.</p>
+              </div>
+              <div className="lp-cell-frag">
+                <div className="ui" data-ui style={{ borderRadius: '0 0 8px 0', borderLeft: 0, borderTop: 0 }}>
+                  <div className="ui-head"><span className="ui-title">Bank line B046 · 24 Jun 2026</span></div>
+                  <dl className="ui-kv">
+                    <dt>Credit</dt><dd>$9,000.00</dd>
+                    <dt>Allocated (3 rows)</dt><dd>$7,500.00</dd>
+                    <dt><b style={{ color: 'var(--ink)', fontWeight: 500 }}>Not allocated</b></dt><dd className="neg">$1,500.00</dd>
+                  </dl>
+                </div>
+              </div>
+            </article>
+
+            <article className="lp-cell rv" style={{ ['--i' as string]: 2 }}>
+              <div className="lp-cell-text">
+                <h3>Fees taken without an invoice</h3>
+                <p>Money moved to the office account needs an invoice behind it, issued in time.</p>
+              </div>
+              <div className="lp-cell-frag">
+                <div className="ui" data-ui style={{ borderRadius: '8px 0 0 0', borderRight: 0, borderBottom: 0 }}>
+                  {['L037', 'L039', 'L041'].map(byRecord).filter(Boolean).map(f => (
+                    <div key={f!.sourceRecordId} className="ui-row" style={{ gridTemplateColumns: '48px 1fr' }}>
+                      <span className="num">{f!.sourceRecordId}</span>
+                      <span>{f!.ruleName}<span className="ev" style={{ display: 'block' }}>{f!.short}</span></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </article>
+
+            <article className="lp-cell frag-top rv">
+              <div className="lp-cell-text">
+                <h3>A ledger that disagrees with the bank</h3>
+                <p>At the end of April the bank held $250.00 more than the ledger said it should.</p>
+              </div>
+              <div className="lp-cell-frag">
+                <div className="ui" data-ui style={{ borderRadius: '0 0 0 8px', borderRight: 0, borderTop: 0 }}>
+                  <div className="ui-head"><span className="ui-title">Reconciliation · 30 Apr 2026</span></div>
+                  <dl className="ui-kv">
+                    <dt>Ledger total</dt><dd>$798,500.00</dd>
+                    <dt>Bank balance</dt><dd>$798,750.00</dd>
+                    <dt>Difference</dt><dd className="neg">$250.00</dd>
+                  </dl>
+                </div>
+              </div>
+            </article>
+
+            <article className="lp-cell frag-right rv" style={{ ['--i' as string]: 1 }}>
+              <div className="lp-cell-text">
+                <h3>A check that could not run says so</h3>
+                <p>The sample has no certification dates, so the timing check is shown as not run. It is never counted as a pass.</p>
+              </div>
+              <div className="lp-cell-frag">
+                <div className="ui" data-ui style={{ borderRadius: '0 8px 0 0', borderLeft: 0, borderBottom: 0 }}>
+                  {CHECKS.filter(c => ['R13', 'R14'].includes(c.code)).map(c => (
+                    <div key={c.code} className="ui-row" style={{ gridTemplateColumns: '40px 1fr auto' }}>
+                      <span className="num">{c.code}</span><span>{c.name}</span>{resultPill(c)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </article>
+
+            <article className="lp-cell frag-top rv" style={{ ['--i' as string]: 2 }}>
+              <div className="lp-cell-text">
+                <h3>Every finding names its regulation</h3>
+                <p>And the row it came from, so you can check it yourself in the export.</p>
+              </div>
+              <div className="lp-cell-frag">
+                <div className="ui" data-ui style={{ borderRadius: '0 0 0 8px', borderRight: 0, borderTop: 0 }}>
+                  <dl className="ui-kv">
+                    <dt>Record</dt><dd>L021</dd>
+                    <dt>Check</dt><dd>R01 · Overdrawn client ledger</dd>
+                    <dt>Regulation</dt><dd>Reg 6 and Reg 12(6)(a)</dd>
+                    <dt>Balance after</dt><dd className="neg">−$2,500.00</dd>
+                  </dl>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        {/* ── The checks ────────────────────────────────────────────────────── */}
+        <section id="checks" className="lp-wrap lp-checks" aria-labelledby="checks-h">
+          <div className="lp-checks-head rv">
+            <h2 id="checks-h"><span>{CHECKS.length} checks.</span> <span>{STATUTORY_COUNT} from the Regulations.</span></h2>
+            <button className="btn btn--ink" onClick={() => onEnterDemo()}>Open the sample report <Arrow /></button>
+          </div>
+          <div className="lp-checks-body">
+            <div className="lp-tabs" role="tablist" aria-label="Groups of checks">
+              {GROUPS.map(g => (
+                <button key={g.id} role="tab" id={`tab-${g.id}`} aria-selected={group === g.id} aria-controls="bands" className="lp-tab" onClick={() => setGroup(g.id)}>
+                  <b>{g.label}</b><small>{g.rules.length} checks · {g.note.toLowerCase()}</small>
+                </button>
+              ))}
+            </div>
+            <div id="bands" className="lp-bands" role="tabpanel" aria-labelledby={`tab-${group}`} key={group}>
+              {groupChecks(group).map((c, i) => (
+                <div key={c.code} className="lp-band" style={{ ['--i' as string]: i }}>
+                  <span className="lp-band-code">{c.code}</span>
+                  <span className="lp-band-name">{c.name}</span>
+                  <span className="lp-band-cite">{c.sourceUrl ? <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer">{c.short}</a> : `${c.short}, no direct statutory basis`}</span>
+                  <span className="lp-band-res">{resultPill(c)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── How it runs ───────────────────────────────────────────────────── */}
+        <section id="runs" className="lp-steps" aria-labelledby="runs-h">
+          <div className="lp-step">
+            <h2 id="runs-h">How it runs</h2>
+            <div className="lp-step-card ui rv" data-ui>
+              <div className="ui-head"><span className="ui-title">Export · May 2026</span></div>
+              <dl className="ui-kv" style={{ fontSize: 13 }}>
+                <dt>client_ledger.csv</dt><dd>ledger</dd>
+                <dt>trust_bank_statement.csv</dt><dd>bank</dd>
+                <dt>invoice_register.csv</dt><dd>invoices</dd>
+                <dt>+3 more</dt><dd>matters, allocations, reconciliations</dd>
+              </dl>
+            </div>
+            <p className="lp-step-say">First you export the month from your practice system.</p>
+          </div>
+          <div className="lp-step">
+            <div className="lp-step-card ui rv" data-ui style={{ ['--i' as string]: 1 }}>
+              <div className="ui-head"><span className="ui-title">Checking on this computer</span></div>
+              <dl className="ui-kv">
+                <dt>Checks run</dt><dd>{CHECKS.length - NOT_RUN.length} of {CHECKS.length}</dd>
+                <dt>Not run</dt><dd>{NOT_RUN.map(c => c.code).join(', ') || 'none'}</dd>
+                <dt>Uploaded</dt><dd>nothing</dd>
+              </dl>
+            </div>
+            <p className="lp-step-say">Then the engine checks it where it already sits.</p>
+          </div>
+          <div className="lp-step">
+            <figure className="lp-step-card rv" style={{ ['--i' as string]: 2 }}>
+              <img className="ui-shot" src="/img/report-page-1.png" width={909} height={1286} alt="Page 1 of the exception report: firm, period, 23 exceptions, and the first critical finding with its regulation, record and action." loading="lazy" />
+            </figure>
+            <p className="lp-step-say">Then you read the report, finding by finding.</p>
+          </div>
+          <div className="lp-step">
+            <div className="lp-step-card ui rv" data-ui style={{ ['--i' as string]: 3 }}>
+              <div className="ui-head"><span className="ui-title">L021 · your note</span></div>
+              <dl className="ui-kv" style={{ textAlign: 'left' }}>
+                <dt>Found</dt><dd>Payment exceeded receipts</dd>
+                <dt>Cause</dt><dd>for you to write</dd>
+                <dt>Fixed on</dt><dd>for you to write</dd>
+              </dl>
+            </div>
+            <p className="lp-step-say">Then you sign, knowing what is behind each figure.</p>
+          </div>
+        </section>
+
+        {/* ── Questions ─────────────────────────────────────────────────────── */}
+        <section id="questions" className="lp-wrap lp-faq" aria-labelledby="faq-h">
+          <div className="lp-faq-list">
+            <h2 id="faq-h">Questions</h2>
+            {FAQ.map((f, i) => (
+              <div key={f.q}>
+                <button className="lp-q" aria-expanded={faq === i} onClick={() => setFaq(i)} onMouseEnter={() => setFaq(i)} onFocus={() => setFaq(i)}>{f.q}</button>
+                {faq === i && <p className="lp-a-inline">{f.a}</p>}
+              </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ── Trust bar — Correction 2 (3 columns) ─────────────────────────── */}
-      <div style={{ background: '#F2EFE8', borderBottom: '1px solid #D4CFC8' }}>
-        <div className="stack-sm" style={{ maxWidth: 1080, margin: '0 auto', padding: '36px 48px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }}>
-
-          <div>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 12 }}>
-              Regulations checked
-            </div>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', lineHeight: 2, marginBottom: 10 }}>
-              <div>LCA Reg 6 · Reg 12(6)(a) · Reg 17</div>
-              <div>LCA Reg 11 · Reg 9 · Reg 12(7)</div>
-              <div>LCA 2006 s110; Reg 8/Reg 9</div>
-            </div>
-            <div style={{ fontSize: 13, color: '#6B6B7A', lineHeight: 1.6 }}>
-              {RULES.length} clauses evaluated against every transaction in the export.
-            </div>
+          <div className="lp-faq-pane" aria-live="polite">
+            <p key={faq}>{FAQ[faq].a}</p>
           </div>
+        </section>
 
-          <div>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 12 }}>
-              Where your data goes
-            </div>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', lineHeight: 2, marginBottom: 10 }}>
-              <div>Processed on your local machine.</div>
-              <div>Nothing is uploaded to any server.</div>
-              <div>No account required.</div>
-            </div>
-            <div style={{ fontSize: 13, color: '#6B6B7A', lineHeight: 1.6 }}>
-              Your ledger export never leaves your local environment.
-            </div>
+        {/* ── Close: the first step, already open ───────────────────────────── */}
+        <section className="lp-wrap lp-cta" aria-labelledby="cta-h">
+          <div className="lp-cta-copy">
+            <h2 id="cta-h">See it<br />run</h2>
+            <p>Opens the report the engine wrote for a made-up firm. Nothing to install, nothing to upload.</p>
           </div>
-
-          <div>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 12 }}>
-              How figures are produced
-            </div>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', lineHeight: 2, marginBottom: 10 }}>
-              <div>Same input. Same result. Every time.</div>
-            </div>
-            <div style={{ fontSize: 13, color: '#6B6B7A', lineHeight: 1.6 }}>
-              Balances are computed in Python from your CSV columns — not estimated by an AI. The calculation is traceable to the source row. You can verify every figure yourself.
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── Features — 3 cards (Mockup 2) ────────────────────────────────── */}
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '72px 48px 24px' }}>
-        <div className="stack-sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
-          {[
-            { no: '01', title: 'Deterministic rule engine', body: `${RULES.length} trust-account rules evaluated in Python. No AI in the arithmetic path; the same input always produces the same result.` },
-            { no: '02', title: 'Inspection preparation', body: 'A PDF exception report and a Statement of Diligence evidence pack, designed to help you prepare for an NZLS inspection.' },
-            { no: '03', title: 'Direct from your system', body: 'Ingests CSV and Excel exports from LEAP, Actionstep, and Infinitylaw. No migration, no re-keying.' },
-          ].map(f => (
-            <div key={f.no} style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '28px 26px' }}>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#C8A84B', letterSpacing: 1, marginBottom: 18 }}>{f.no}</div>
-              <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 17, margin: '0 0 12px', color: '#1B2A4A' }}>{f.title}</h3>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: '#4A4A5A' }}>{f.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── What this adds — Fix 3 ───────────────────────────────────────── */}
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '56px 48px 24px' }}>
-        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 22, margin: '0 0 10px', color: '#1B2A4A' }}>
-          What your practice management system does — and what this adds on top
-        </h2>
-        <p style={{ margin: '0 0 28px', fontSize: 15, color: '#6E7B96', maxWidth: '64ch', lineHeight: 1.6 }}>
-          Your system records transactions and produces a monthly reconciliation. This engine checks what the reconciliation cannot see.
-        </p>
-        <div style={{ background: '#F7F5F0', border: '1px solid #D4CFC8', borderLeft: '3px solid #C8284B', borderRadius: 4 }}>
-          {[
-            {
-              body: 'Your system will not tell you a client ledger went negative intra-month before being corrected at month-end. This engine flags it the moment it happens.',
-              citation: 'LCA Reg 12(6)(a)',
-            },
-            {
-              body: 'Your system will not tell you a fee or disbursement entry has no rendered invoice on file. This engine flags it.',
-              citation: 'LCA Reg 9',
-            },
-            {
-              body: 'Your system will not produce a dated Statement of Diligence you can hand to an inspector as evidence the review was conducted systematically. This engine produces one. Every run.',
-              citation: 'LCA (Trust Account) Regulations 2008, Reg 17',
-            },
-          ].map((row, i, arr) => (
-            <div key={row.citation} style={{ padding: '16px 20px', borderBottom: i < arr.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <span style={{ color: '#C8284B', fontSize: 16, fontWeight: 700, flexShrink: 0, lineHeight: 1.4 }}>✗</span>
-                <div>
-                  <p style={{ margin: '0 0 6px', fontSize: 14, color: '#1B2A4A', lineHeight: 1.65 }}>{row.body}</p>
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#8A8576' }}>{row.citation}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Regulations table — Correction 3 + Correction 6 Placement 1 ─── */}
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '56px 48px 24px' }}>
-        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 28, margin: '0 0 8px', color: '#1B2A4A' }}>The {RULES.length} rules</h2>
-        <p style={{ margin: '0 0 28px', fontSize: 15, color: '#4A4A5A', maxWidth: '64ch' }}>
-          Each rule maps to a specific clause of the 2008 Regulations. The engine evaluates every transaction against the relevant clause and records the outcome.
-        </p>
-        <div className="wide-table" style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 110px 80px', padding: '14px 24px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
-            <div>Regulation</div>
-            <div>Rule</div>
-            <div style={{ textAlign: 'right' }}>Severity</div>
-            <div style={{ textAlign: 'right' }}>Source</div>
-          </div>
-          {RULES.map((r, i) => {
-            const isCrit = r.severity === 'CRITICAL';
-            const kind = sourceKind(r.code);
-            const href = kind === 'NZLS' ? NZLS_URL : kind === 'LCA' ? LCA_URL : null;
-            const label = kind === 'NZLS' ? 'NZLS' : kind === 'LCA' ? 'LCA' : 'Internal';
-            return (
-              <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 110px 80px', alignItems: 'center', padding: '16px 24px', borderBottom: i < RULES.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
-                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#1B2A4A' }}>{r.code}</div>
-                <div style={{ fontSize: 14, color: '#1A1A2E' }}>{r.rule}</div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 500, letterSpacing: 0.5, color: isCrit ? '#C8284B' : '#C87028', border: `1px solid ${isCrit ? '#C8284B' : '#C87028'}`, borderRadius: 3, padding: '3px 8px' }}>
-                    {r.severity}
-                  </span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  {href ? (
-                    <a href={href} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#1B2A4A', textDecoration: 'none', borderBottom: '1px solid #C8A84B', paddingBottom: 1 }}>
-                      {label} <ExternalLink style={{ width: 10, height: 10, flexShrink: 0 }} />
-                    </a>
-                  ) : (
-                    <span style={{ fontSize: 11, color: '#8A8576' }}>{label}</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ marginTop: 24 }}>
-          <button
-            className="press"
-            onClick={onEnterDemo}
-            style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 14, fontWeight: 600, background: 'none', border: 'none', color: '#1B2A4A', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #C8A84B', paddingBottom: 2 }}
+          <form
+            className="lp-cta-dialog ui ui-dialog"
+            data-ui
+            onSubmit={e => { e.preventDefault(); onEnterDemo({ filter, reviewer: reviewer.trim() || undefined }); }}
           >
-            View the live results against synthetic data →
+            <div className="ui-head"><span className="ui-title">Open a report</span><span className="ui-meta">{reportSummary.firmName} (sample) · {reportSummary.period}</span></div>
+            <div className="ui-body">
+              <div className="ui-field">
+                <label htmlFor="reviewer">Reviewing as</label>
+                <input id="reviewer" value={reviewer} onChange={e => setReviewer(e.target.value)} autoComplete="off" />
+              </div>
+              <div className="ui-field">
+                <label id="show-label">Show</label>
+                <div className="seg" role="group" aria-labelledby="show-label">
+                  <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>All {reportSummary.totalViolations}</button>
+                  <button type="button" aria-pressed={filter === 'critical'} onClick={() => setFilter('critical')}>Critical {reportSummary.criticalCount}</button>
+                </div>
+              </div>
+              <button type="submit" className="ui-primary">Open the sample report</button>
+            </div>
+          </form>
+        </section>
+      </main>
+
+      {/* ── Footer of tiles ─────────────────────────────────────────────────── */}
+      <footer>
+        <div className="lp-foot">
+          <div className="lp-tile lp-t-statement">
+            <p>Every figure on this site comes from the engine, run on a made-up firm&rsquo;s ledger.</p>
+            <small>Not affiliated with or endorsed by the New Zealand Law Society. Not legal advice.</small>
+          </div>
+          <nav className="lp-tile lp-t-nav" aria-label="Footer">
+            <ul>
+              <li><a href="#finds">What it finds</a></li>
+              <li><a href="#checks">The checks</a></li>
+              <li><a href="#runs">How it runs</a></li>
+              <li><a href="#questions">Questions</a></li>
+            </ul>
+          </nav>
+          <div className="lp-tile lp-t-time">
+            <p>Auckland</p>
+            <p className="num">{nzTime}</p>
+          </div>
+          <div className="lp-tile lp-t-contact">
+            <p>Talk to me about certificate week</p>
+            <a className="link" href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">Michael Dang on LinkedIn</a>
+          </div>
+          <div className="lp-tile lp-t-word" aria-hidden="true"><span>TrustSentry</span></div>
+          <button className="lp-tile lp-t-go" onClick={() => onEnterDemo()}>
+            <span>Open the sample report</span>
+            <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true"><path d="M14 42 42 14M20 14h22v22" stroke="currentColor" strokeWidth="4" /></svg>
           </button>
         </div>
-      </div>
-
-
-      {/* ── Footer — Correction 8 ─────────────────────────────────────────── */}
-      <footer style={{ marginTop: 48, background: '#1B2A4A', color: '#AEB8CC' }}>
-        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '44px 48px', display: 'flex', justifyContent: 'space-between', gap: 40, flexWrap: 'wrap' }}>
-
-          <div style={{ maxWidth: '48ch' }}>
-            <div style={{ fontFamily: "'IBM Plex Serif', serif", color: '#FFFFFF', fontSize: 16, marginBottom: 12 }}>Trust Account Integrity Engine</div>
-            <p style={{ margin: '0 0 20px', fontSize: 13, lineHeight: 1.6, color: '#9AA5BC' }}>
-              All figures shown in this engine are derived from synthetic NZ trust ledger data created for demonstration. They do not represent any real firm, client, matter, or trust account.
-            </p>
-            {/* Contact — Fix 4 */}
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.10)', paddingTop: 20 }}>
-              <p style={{ margin: '0 0 10px', fontSize: 13, color: '#9AA5BC' }}>Request a walkthrough</p>
-              <a
-                href="https://www.linkedin.com/in/michael-dang-964622193/"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#C8A84B', textDecoration: 'none', marginBottom: 16 }}
-              >
-                Connect on LinkedIn ↗
-              </a>
-              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#9AA5BC', lineHeight: 1.6, maxWidth: '40ch' }}>
-                Runs entirely on your machine. If this service were discontinued tomorrow, your reports keep running — the engine has no dependency on external uptime, cloud storage, or my personal availability.
-              </p>
-              <p style={{ margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#6E7B96', letterSpacing: 0.5 }}>
-                Built in Auckland, New Zealand. Sole developer — direct contact, no support queue.
-              </p>
-            </div>
-          </div>
-
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, lineHeight: 1.9, color: '#9AA5BC', letterSpacing: 0.5 }}>
-            <div>Jurisdiction · New Zealand</div>
-            <div>Regulations · LCA (Trust Account) Regulations 2008</div>
-            <div>Processing · Local, deterministic</div>
-          </div>
-
-        </div>
+        <p className="lp-credit">Built by Michael Dang in Auckland. The sample report is generated from synthetic data; it describes no real firm, client or matter.</p>
       </footer>
-
     </div>
   );
 }

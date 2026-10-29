@@ -1,177 +1,168 @@
-import React from 'react';
-import { ExternalLink } from 'lucide-react';
-import { violations, complianceChecks, reportSummary } from '../data';
+import { useMemo, useRef, useState } from 'react';
+import { reportSummary } from '../data';
+import { CHECKS, FINDINGS, NOT_RUN, checkName, tidy, type Finding } from '../lib/rules';
 
-const RED   = '#C8284B';
-const AMBER = '#C87028';
-const GREEN = '#2A6B3C';
-const GREY  = '#8A8576';
-const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html';
-const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
+type Filter = 'all' | 'critical' | 'high';
 
-type SourceKind = 'LCA' | 'NZLS' | 'INTERNAL';
+const levelPill = (l: Finding['level']) =>
+  <span className={`pill pill--${l === 'critical' ? 'crit' : 'high'}`}>{l === 'critical' ? 'Critical' : 'High'}</span>;
 
-function sourceKind(citation: string): SourceKind {
-  if (citation.includes('no statutory basis') || citation.startsWith('Internal control')) return 'INTERNAL';
-  if (citation.startsWith('NZLS') || citation.includes('LTAG') || citation.includes('(guidance)')) return 'NZLS';
-  return 'LCA';
+const fmtDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+
+// The screen's one finding, computed from the R01 rows: how many client ledgers
+// went below zero, and the deepest balance.
+function overdrawnSummary() {
+  const r01 = FINDINGS.filter(f => f.code === 'R01').map(f => {
+    const matter = f.evidence.match(/matter (M\d+)/)?.[1] ?? '';
+    const bal = Number(f.evidence.match(/balance (-?)\$([\d,.]+)/)?.slice(1).join('').replace(/,/g, '') ?? 0);
+    const date = f.evidence.match(/dated (\d{4}-\d{2}-\d{2})/)?.[1] ?? '';
+    return { matter, bal, date };
+  });
+  const matters = new Set(r01.map(r => r.matter));
+  const deepest = r01.reduce((a, b) => (b.bal < a.bal ? b : a), r01[0]);
+  return { count: matters.size, deepest };
 }
 
-const notEvaluated   = complianceChecks.filter(c => c.status === 'not_evaluated');
-const evaluatedCount = complianceChecks.length - notEvaluated.length;
-
-const sorted = [...violations].sort((a, b) => {
-  if (a.severity === b.severity) return a.ruleId.localeCompare(b.ruleId);
-  return a.severity === 'CRITICAL' ? -1 : 1;
-});
-
-export default function EngineResults() {
-  const criticalCount = reportSummary.criticalCount;
-  const highCount     = reportSummary.highCount;
+export default function EngineResults({ initialFilter = 'all', focus }: { initialFilter?: Filter; focus?: string }) {
+  const [filter, setFilter] = useState<Filter>(initialFilter);
+  const shown = useMemo(() => FINDINGS.filter(f => filter === 'all' || f.level === filter), [filter]);
+  // A finding opened from the overview may sit past the first eight rows: show them all then.
+  const [showAll, setShowAll] = useState(() => !!focus && shown.findIndex(f => f.sourceRecordId === focus) >= 8);
+  const visible = showAll ? shown : shown.slice(0, 8);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const select = (key: string) => {
+    setSelected(key);
+    // On a phone the detail sits below the list: bring it into view.
+    if (window.matchMedia('(max-width: 1080px)').matches) {
+      requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }));
+    }
+  };
+  const [selected, setSelected] = useState<string>(() => {
+    const f = FINDINGS.find(x => x.sourceRecordId === focus && x.code !== 'R04') ?? FINDINGS[0];
+    return `${f.code}-${f.sourceRecordId}`;
+  });
+  const current = FINDINGS.find(f => `${f.code}-${f.sourceRecordId}` === selected) ?? shown[0];
+  const od = overdrawnSummary();
+  const byCheck = CHECKS.filter(c => c.status !== 'not_evaluated' && c.resultCount > 0).sort((a, b) => b.resultCount - a.resultCount);
+  const maxCount = Math.max(...byCheck.map(c => c.resultCount));
+  const ran = CHECKS.length - NOT_RUN.length;
+  const fmtNzd = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString('en-NZ', { minimumFractionDigits: 2 });
 
   return (
-    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
+    <div className="ap-col">
+      <div className="ap-titlerow">
+        <div>
+          <h1>Exception report</h1>
+          <p className="ap-sub">{reportSummary.firmName} (sample firm) · {reportSummary.period} · generated {fmtDate(reportSummary.generatedAt)} from synthetic data · {reportSummary.sensitivity} sensitivity</p>
+        </div>
+        <div className="ap-actions">
+          <a className="ap-btn" href="/exception_report.pdf" download>Download the PDF</a>
+        </div>
+      </div>
 
-      {/* ── Eyebrow + heading ──────────────────────────────────────────────── */}
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Exception Report</div>
-      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 10px', color: '#1B2A4A' }}>Compliance Findings</h1>
-      <p style={{ margin: '0 0 22px', fontSize: 14, color: '#6B6B7A', maxWidth: '72ch' }}>
-        Generated by the engine from a synthetic ledger for a fictional firm. The product itself runs on your own computer; this page only shows its output.
+      <p className="ap-finding">
+        <span className="pill pill--crit">Read first</span>
+        <span><strong className="num">{od.count} client ledgers</strong> went below zero. The deepest was matter {od.deepest.matter} at <strong className="num" style={{ color: 'var(--crit)' }}>{fmtNzd(od.deepest.bal)}</strong> on {fmtDate(od.deepest.date)}.</span>
       </p>
 
-      {/* ── Summary cards — Correction 5 (real engine data) ───────────────── */}
-      <div className="stack-sm-2 tabular" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 30 }}>
-        <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '18px 20px' }}>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8576', marginBottom: 9 }}>Firm</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#1B2A4A', lineHeight: 1.35 }}>{reportSummary.firmName}</div>
-          <div style={{ fontSize: 12, color: '#6B6B7A' }}>Trust Account</div>
-        </div>
-        <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '18px 20px' }}>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8576', marginBottom: 9 }}>Reporting period</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#1B2A4A' }}>{reportSummary.period}</div>
-          <div style={{ fontSize: 12, color: '#6B6B7A' }}>Monthly certification</div>
-        </div>
-        <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '18px 20px' }}>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8576', marginBottom: 9 }}>Generated</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#1B2A4A' }}>{reportSummary.generatedAt}</div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#6B6B7A' }}>NZST</div>
-        </div>
-        <div style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '18px 20px' }}>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8576', marginBottom: 9 }}>Findings</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <span style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 22, color: RED, fontWeight: 500 }}>{criticalCount}</span>
-            <span style={{ fontSize: 12, color: '#6B6B7A' }}>Critical</span>
-            <span style={{ fontFamily: "'IBM Plex Serif', serif", fontSize: 22, color: AMBER, fontWeight: 500 }}>{highCount}</span>
-            <span style={{ fontSize: 12, color: '#6B6B7A' }}>High</span>
+      <dl className="ap-stats">
+        <div className="ap-stat lead"><dt>Findings</dt><dd>{reportSummary.totalViolations}</dd></div>
+        <div className="ap-stat"><dt>Critical</dt><dd>{reportSummary.criticalCount}</dd></div>
+        <div className="ap-stat"><dt>High</dt><dd>{reportSummary.highCount}</dd></div>
+        <div className="ap-stat"><dt>Checks run</dt><dd>{ran} <small>of {CHECKS.length}</small></dd></div>
+      </dl>
+
+      <div className="ap-grid">
+        <section className="ap-card" aria-labelledby="list-h">
+          <div className="ap-card-h">
+            <h2 id="list-h">Findings <span className="meta num">{shown.length}</span></h2>
+            <div className="seg" role="group" aria-label="Show findings">
+              {(['all', 'critical', 'high'] as Filter[]).map(f => (
+                <button key={f} type="button" aria-pressed={filter === f} onClick={() => { setFilter(f); setShowAll(false); }}>
+                  {f === 'all' ? 'All' : f === 'critical' ? 'Critical' : 'High'}
+                </button>
+              ))}
+            </div>
           </div>
+          <div role="listbox" aria-label="Findings" className="ap-list">
+            {visible.map(f => {
+              const key = `${f.code}-${f.sourceRecordId}`;
+              return (
+                <button key={key} role="option" aria-selected={key === selected} className="ap-item" onClick={() => select(key)}>
+                  <span className="rec">{f.code} · {f.sourceRecordId}</span>
+                  <span><span className="t">{f.ruleName}</span><span className="e">{tidy(f.evidence)}</span></span>
+                  {levelPill(f.level)}
+                </button>
+              );
+            })}
+          </div>
+          {shown.length > 8 && (
+            <div className="ap-note" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <span className="num">{visible.length} of {shown.length} shown</span>
+              <button className="ap-btn ap-btn--ghost" onClick={() => setShowAll(v => !v)}>{showAll ? 'Show fewer' : `Show all ${shown.length}`}</button>
+            </div>
+          )}
+        </section>
+
+        <div style={{ display: 'grid', gap: 16 }} className="ap-detail" ref={detailRef}>
+          {current && (
+            <section className="ap-card" aria-labelledby="detail-h">
+              <div className="ap-card-h"><h2 id="detail-h">Record {current.sourceRecordId}</h2>{levelPill(current.level)}</div>
+              <div className="ap-body">
+                <h3>{current.ruleName}</h3>
+                <p>{tidy(current.evidence)}</p>
+                <dl>
+                  <dt>Check</dt><dd>{current.code} · {checkName(current.code)}</dd>
+                  <dt>Regulation</dt>
+                  <dd>{current.url ? <a href={current.url} target="_blank" rel="noopener noreferrer">{current.nzLawSocietyRule}</a> : current.nzLawSocietyRule}</dd>
+                  <dt>Source</dt><dd>{current.sourceRecordType.replace(/_/g, ' ')}</dd>
+                  <dt>Status</dt><dd>Unresolved</dd>
+                </dl>
+              </div>
+            </section>
+          )}
+          <section className="ap-card" aria-labelledby="bycheck-h">
+            <div className="ap-card-h"><h2 id="bycheck-h">Findings by check</h2><span className="meta">{byCheck.length} checks found something</span></div>
+            <div className="ap-bars">
+              {byCheck.map(c => (
+                <div key={c.code} className="ap-bar" title={c.name}>
+                  <span>{c.code}</span>
+                  <span className="track"><span className="fill" style={{ display: 'block', width: `${(c.resultCount / maxCount) * 100}%` }} /></span>
+                  <span className="v">{c.resultCount}</span>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       </div>
 
-      {/* ── Explainer ─────────────────────────────────────────────────────── */}
-      <div style={{ background: '#FBFAF7', border: '1px solid #D4CFC8', borderLeft: '3px solid #1B2A4A', borderRadius: 4, padding: '18px 22px', marginBottom: 34 }}>
-        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: '#3A3A4A' }}>
-          These results come from running the Trust Account Integrity Engine against synthetic NZ trust ledger data containing {reportSummary.totalViolations} deliberately seeded compliance breaches. The engine processed the data deterministically in Python; no AI is in the arithmetic path.
-        </p>
-      </div>
-
-      {/* ── Violations — real data with clickable badges (Correction 6 P2) ── */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 22, margin: 0, color: '#1B2A4A' }}>Violations</h2>
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576' }}>{reportSummary.totalViolations} findings</span>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 44 }}>
-        {sorted.map((v, i) => {
-          const isCrit  = v.severity === 'CRITICAL';
-          const color   = isCrit ? RED : AMBER;
-          const border  = isCrit ? '#E8B0BD' : '#E8C8A8';
-          const tint    = isCrit ? '#FBEEF1' : '#FBF3EA';
-          const kind    = sourceKind(v.nzLawSocietyRule);
-          const href    = kind === 'NZLS' ? NZLS_URL : kind === 'LCA' ? LCA_URL : null;
-          return (
-            <div key={`${v.ruleId}-${i}`} style={{ background: '#FFFFFF', border: `1px solid #D4CFC8`, borderLeft: `4px solid ${color}`, borderRadius: 4, padding: '20px 24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-                {/* Severity badge */}
-                <span style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#FFFFFF', background: color, borderRadius: 3, padding: '4px 9px' }}>
-                  {v.severity}
-                </span>
-                {/* Regulation badge — clickable (Correction 6 Placement 2) */}
-                {href ? (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: color, border: `1px solid ${border}`, borderRadius: 3, padding: '3px 9px', background: tint, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                  >
-                    {v.nzLawSocietyRule} <ExternalLink style={{ width: 10, height: 10, flexShrink: 0 }} />
-                  </a>
-                ) : (
-                  <span
-                    style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: color, border: `1px solid ${border}`, borderRadius: 3, padding: '3px 9px', background: tint, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                  >
-                    {v.nzLawSocietyRule}
-                  </span>
-                )}
-                {/* Record ID */}
-                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576', marginLeft: 'auto' }}>
-                  Record {v.sourceRecordId}
-                </span>
-              </div>
-              <h3 style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 600, fontSize: 16, margin: '0 0 8px', color: '#1B2A4A' }}>{v.ruleName}</h3>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: '#3A3A4A' }}>{v.evidence}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Compliance checks — Correction 3 regulation codes ─────────────── */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 22, margin: 0, color: '#1B2A4A' }}>Compliance checks</h2>
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#8A8576' }}>{evaluatedCount} of {complianceChecks.length} rules evaluated</span>
-      </div>
-      <div className="wide-table tabular" style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden', marginBottom: 30 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr 90px 96px', padding: '13px 22px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
-          <div>Regulation</div>
-          <div>Check</div>
-          <div style={{ textAlign: 'center' }}>Findings</div>
-          <div style={{ textAlign: 'right' }}>Result</div>
+      <section className="ap-card ap-section" aria-labelledby="checks-h">
+        <div className="ap-card-h"><h2 id="checks-h">Checks</h2><span className="meta">{ran} of {CHECKS.length} run</span></div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="ui-table" style={{ minWidth: 640 }}>
+            <thead><tr><th>Check</th><th>Name</th><th>Regulation</th><th className="r">Findings</th><th className="r">Result</th></tr></thead>
+            <tbody>
+              {CHECKS.map(c => (
+                <tr key={c.code}>
+                  <td>{c.code}</td>
+                  <td>{c.name}</td>
+                  <td style={{ color: 'var(--muted)' }}>{c.short}</td>
+                  <td className="r">{c.status === 'not_evaluated' ? '—' : c.resultCount}</td>
+                  <td className="r">
+                    {c.status === 'not_evaluated'
+                      ? <span className="pill pill--na">Not run</span>
+                      : c.resultCount === 0 ? <span className="pill pill--pass">Passed</span>
+                        : <span className={`pill pill--${c.severity === 'critical' ? 'crit' : 'high'}`}>{c.severity === 'critical' ? 'Critical' : 'High'}</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        {complianceChecks.map((c, i) => {
-          const notRun   = c.status === 'not_evaluated';
-          const isPassed = c.status === 'passed';
-          const color    = notRun ? GREY : isPassed ? GREEN : RED;
-          const label    = notRun ? 'N/A' : isPassed ? 'PASS' : 'FAIL';
-          return (
-            <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '220px 1fr 90px 96px', alignItems: 'center', padding: '15px 22px', borderBottom: i < complianceChecks.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#1B2A4A', lineHeight: 1.4 }}>{c.nzlsReference}</div>
-              <div style={{ fontSize: 14, color: '#1A1A2E' }}>{c.name}</div>
-              <div style={{ textAlign: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#6B6B7A' }}>{notRun ? '—' : c.resultCount}</div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, letterSpacing: 0.5, color }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }}></span>{label}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {notEvaluated.length > 0 && (
-        <p style={{ margin: '-18px 0 30px', fontSize: 13, color: '#6B6B7A', lineHeight: 1.6, maxWidth: '72ch' }}>
-          <strong style={{ color: '#4A4A5A' }}>N/A</strong> means a rule was not run because the input lacks the fields it needs
-          ({notEvaluated.map(c => c.id.slice(0, 3)).join(', ')}; the reason is shown in the table). It is not a pass.
-        </p>
-      )}
-
-      {/* ── Actions ───────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 14 }}>
-        <a
-          href="/exception_report.pdf"
-          style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 14, fontWeight: 600, background: '#C8A84B', color: '#1B2A4A', border: 'none', borderRadius: 4, padding: '13px 24px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}
-        >
-          Download Exception Report (PDF)
-        </a>
-      </div>
-
+        {NOT_RUN.length > 0 && (
+          <p className="ap-note">Not run means the input lacks the fields the check needs ({NOT_RUN.map(c => c.code).join(', ')}: no certification dates in the sample). It is not a pass.</p>
+        )}
+      </section>
     </div>
   );
 }

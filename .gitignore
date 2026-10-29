@@ -6,3 +6,10 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# taste-skill: keep the dealt sheets, not the screenshots
+.taste-skill/*
+!.taste-skill/direction.json
+!.taste-skill/app/
+.taste-skill/app/*
+!.taste-skill/app/direction.json
