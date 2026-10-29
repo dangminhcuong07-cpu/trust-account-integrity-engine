@@ -32,16 +32,6 @@ const RULES = [
   { id: 'R14', code: 'LCA Reg 14',                  rule: 'Reconciliation not certified within the statutory deadline',                         severity: 'HIGH'     },
 ];
 
-// Pricing is not decided and the demo is linked from research requests, so the
-// fee table stays hidden until it is.
-const SHOW_PRICING = false;
-
-const FEES = [
-  { name: 'Monthly review',    scope: 'One trust account — ledger ingestion, 13-rule evaluation, PDF exception report, Statement of Diligence pack', fee: '$199 / month' },
-  { name: 'Multi-principal',   scope: 'Up to 5 trust accounts — consolidated exception report across all accounts, each evaluated separately',      fee: '$349 / month' },
-  { name: 'Inspection pack',   scope: 'Statement of Diligence evidence pack formatted for the NZLS Inspectorate, includes 12-month findings history', fee: '$499 (one-off)' },
-];
-
 export default function LandingPage({ onEnterDemo }: Props) {
   return (
     <div style={{ minHeight: '100vh', background: '#F7F5F0', fontFamily: "'IBM Plex Sans', sans-serif", color: '#1A1A2E', fontSize: 15, lineHeight: 1.55, WebkitFontSmoothing: 'antialiased' }}>
@@ -161,7 +151,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
         <div className="stack-sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
           {[
             { no: '01', title: 'Deterministic rule engine', body: `${RULES.length} trust-account rules evaluated in Python. No AI in the arithmetic path; the same input always produces the same result.` },
-            { no: '02', title: 'Inspectorate-ready output', body: 'A PDF exception report and a Statement of Diligence evidence pack, formatted for the NZLS Inspectorate.' },
+            { no: '02', title: 'Inspection preparation', body: 'A PDF exception report and a Statement of Diligence evidence pack, designed to help you prepare for an NZLS inspection.' },
             { no: '03', title: 'Direct from your system', body: 'Ingests CSV and Excel exports from LEAP, Actionstep, and Infinitylaw. No migration, no re-keying.' },
           ].map(f => (
             <div key={f.no} style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, padding: '28px 26px' }}>
@@ -261,32 +251,6 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </div>
       </div>
 
-      {/* ── Fees section — hidden while pricing is undecided (SHOW_PRICING) ── */}
-      {SHOW_PRICING && (
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '56px 48px 24px' }}>
-        <h2 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 28, margin: '0 0 8px', color: '#1B2A4A' }}>Fee estimate</h2>
-        <p style={{ margin: '0 0 6px', fontSize: 15, color: '#4A4A5A', maxWidth: '64ch' }}>
-          Runs locally — your data never leaves your office. No cloud storage, no external processing.
-        </p>
-        <div className="wide-table" style={{ margin: '24px 0', background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 150px', padding: '13px 24px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
-            <div>Engagement</div>
-            <div>Scope</div>
-            <div style={{ textAlign: 'right' }}>Fee</div>
-          </div>
-          {FEES.map((x, i) => (
-            <div key={x.name} style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 150px', alignItems: 'center', padding: '18px 24px', borderBottom: i < FEES.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#1B2A4A' }}>{x.name}</div>
-              <div style={{ fontSize: 14, color: '#3A3A4A' }}>{x.scope}</div>
-              <div style={{ textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, color: '#1B2A4A' }}>{x.fee}</div>
-            </div>
-          ))}
-        </div>
-        <p style={{ margin: 0, fontSize: 13, color: '#6B6B7A', lineHeight: 1.6 }}>
-          All figures NZD, exclusive of GST (+15%). Invoiced monthly or annually. Cancel by email with 30 days notice. No setup fee. No automatic renewal.
-        </p>
-      </div>
-      )}
 
       {/* ── Footer — Correction 8 ─────────────────────────────────────────── */}
       <footer style={{ marginTop: 48, background: '#1B2A4A', color: '#AEB8CC' }}>
@@ -319,7 +283,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
 
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, lineHeight: 1.9, color: '#9AA5BC', letterSpacing: 0.5 }}>
             <div>Jurisdiction · New Zealand</div>
-            <div>Authority · NZLS Inspectorate</div>
+            <div>Regulations · LCA (Trust Account) Regulations 2008</div>
             <div>Processing · Local, deterministic</div>
           </div>
 

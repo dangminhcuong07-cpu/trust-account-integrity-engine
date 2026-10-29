@@ -10,21 +10,15 @@ const RULE_COUNT = complianceChecks.length;
 const LCA_URL  = 'https://www.legislation.govt.nz/regulation/public/2008/0183/latest/whole.html';
 const NZLS_URL = 'https://www.lawsociety.org.nz/assets/Professional-practice-docs/Rules-and-Guidelines/Trust-Accounting-Guidelines-2024.pdf';
 
-type Tab = 'findings' | 'how' | 'workflows' | 'fees' | 'market';
+type Tab = 'findings' | 'how' | 'workflows' | 'market';
 
 const NAV_DEFS: { id: Tab; label: string }[] = [
   { id: 'findings',  label: 'Compliance Findings' },
   { id: 'how',       label: 'How It Works' },
   { id: 'workflows', label: 'Practice Workflows' },
-  // Fee Estimate hidden: pricing is not decided, and the demo is linked from
-  // research requests, not sales. The tab's code stays below for later.
+  // No Fee Estimate tab: pricing is not decided, and the prices were readable
+  // in the public JS bundle even while hidden. Restore from git history if needed.
   { id: 'market',    label: 'Market Context' },
-];
-
-const FEES = [
-  { name: 'Monthly review',  scope: 'One trust account — ledger ingestion, 13-rule evaluation, PDF exception report, Statement of Diligence pack', fee: '$199 / month' },
-  { name: 'Multi-principal', scope: 'Up to 5 trust accounts — consolidated exception report across all accounts, each evaluated separately',      fee: '$349 / month' },
-  { name: 'Inspection pack', scope: 'Statement of Diligence evidence pack formatted for the NZLS Inspectorate, includes 12-month findings history', fee: '$499 (one-off)' },
 ];
 
 function HowItWorksTab() {
@@ -32,7 +26,7 @@ function HowItWorksTab() {
     { no: '01', title: 'Export', body: 'Export your trust ledger, client ledger, and reconciliation as CSV or Excel from LEAP, Actionstep, or Infinitylaw.' },
     { no: '02', title: 'Ingest', body: 'The engine reads the export on your own machine and normalises it to a common ledger model. Nothing is uploaded.' },
     { no: '03', title: 'Evaluate', body: `${RULE_COUNT} rules run deterministically in Python. Each transaction is tested against the relevant clause of the 2008 Regulations.` },
-    { no: '04', title: 'Report', body: 'A PDF exception report and a Statement of Diligence evidence pack are written to disk, ready for your monthly certification and the NZLS Inspectorate.' },
+    { no: '04', title: 'Report', body: 'A PDF exception report and a Statement of Diligence evidence pack are written to disk, ready for your monthly certification and to help you prepare for an inspection.' },
   ];
   return (
     <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
@@ -113,41 +107,6 @@ function PracticeWorkflowsTab() {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function FeeEstimateTab() {
-  return (
-    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8576', marginBottom: 10 }}>Costing</div>
-      <h1 style={{ fontFamily: "'IBM Plex Serif', serif", fontWeight: 500, fontSize: 34, margin: '0 0 14px', color: '#1B2A4A' }}>Fee Estimate</h1>
-
-      {/* Above pricing — Correction 4 */}
-      <p style={{ margin: '0 0 28px', fontSize: 15, color: '#4A4A5A', maxWidth: '62ch', lineHeight: 1.6 }}>
-        Runs locally — your data never leaves your office. No cloud storage, no external processing.
-      </p>
-
-      {/* Pricing table — Correction 4 */}
-      <div className="wide-table" style={{ background: '#FFFFFF', border: '1px solid #D4CFC8', borderRadius: 4, overflow: 'hidden', marginBottom: 18 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 150px', padding: '13px 24px', borderBottom: '1px solid #D4CFC8', background: '#F2EFE8', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: '#6B6B7A' }}>
-          <div>Engagement</div>
-          <div>Scope</div>
-          <div style={{ textAlign: 'right' }}>Fee</div>
-        </div>
-        {FEES.map((x, i) => (
-          <div key={x.name} style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 150px', alignItems: 'center', padding: '18px 24px', borderBottom: i < FEES.length - 1 ? '1px solid #E8E3DB' : 'none' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#1B2A4A' }}>{x.name}</div>
-            <div style={{ fontSize: 14, color: '#3A3A4A' }}>{x.scope}</div>
-            <div style={{ textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, color: '#1B2A4A' }}>{x.fee}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Below pricing — Correction 4 */}
-      <p style={{ margin: 0, fontSize: 13, color: '#6B6B7A', lineHeight: 1.6 }}>
-        All figures NZD, exclusive of GST (+15%). Invoiced monthly or annually. Cancel by email with 30 days notice. No setup fee. No automatic renewal.
-      </p>
     </div>
   );
 }
@@ -354,7 +313,6 @@ export default function App() {
             {tab === 'findings'  && <EngineResults />}
             {tab === 'how'       && <HowItWorksTab />}
             {tab === 'workflows' && <PracticeWorkflowsTab />}
-            {tab === 'fees'      && <FeeEstimateTab />}
             {tab === 'market'    && <MarketContextTab />}
           </div>
         </main>
