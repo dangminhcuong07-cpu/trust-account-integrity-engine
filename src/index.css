@@ -152,9 +152,13 @@ button { font: inherit; color: inherit; }
 /* The desk objects move like Polygon Runway's soft 3D models: they spring into
    place with an overshoot, then keep still. Only the lamp's light keeps breathing.
    Order: sheet rises (250ms), lamp pops (700ms), light flickers on (1400ms), pen drops (1500ms). */
-.lamp { position: absolute; z-index: 2; right: -132px; top: -184px; width: 244px; height: auto; pointer-events: none; transform-origin: 50% 100%; filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.55)); animation: pop-in 850ms 700ms var(--ease-out) both; }
+.lamp { position: absolute; z-index: 2; right: -119px; top: -200px; width: 210px; pointer-events: none; transform-origin: 50% 100%; animation: pop-in 850ms 700ms var(--ease-out) both; }
+.lamp img { position: relative; z-index: 1; display: block; width: 100%; height: auto; }
+.lamp .lamp-on { position: absolute; inset: 0; z-index: 2; }
+/* The light under the shade: starts at the rim (25% down the render), widens to the desk. */
+.lamp-cone { position: absolute; z-index: 0; top: 25%; left: -8%; width: 100%; height: 76%; clip-path: polygon(10% 0, 92% 0, 100% 100%, 0 100%); background: radial-gradient(ellipse 58% 95% at 50% 0, rgba(255, 230, 185, 0.55), rgba(255, 200, 120, 0.12) 55%, transparent 82%); }
 .lamp-bulb { --on: 1; }
-.lamp-cone { --on: 0.42; }
+.lamp-cone { --on: 0.5; }
 .lamp-bulb, .lamp-cone { opacity: var(--on); animation: flicker-on 700ms 1400ms linear both, breathe 4.8s 2100ms ease-in-out infinite alternate; }
 .stage::before { content: ''; position: absolute; z-index: 1; right: -18%; top: -60px; width: 95%; height: 520px; background: radial-gradient(ellipse 50% 45% at 62% 20%, rgba(255, 217, 160, 0.17), transparent 70%); pointer-events: none; mix-blend-mode: screen; animation: flicker-on 700ms 1400ms linear both; }
 @keyframes pop-in {
@@ -169,7 +173,7 @@ button { font: inherit; color: inherit; }
 }
 @keyframes breathe { from { opacity: var(--on); } to { opacity: calc(var(--on) * 0.82); } }
 /* The pen lies across the report's lower corner, ready to sign; it drops in and settles. */
-.pen { position: absolute; right: 28px; bottom: 64px; width: 300px; height: auto; rotate: -21deg; pointer-events: none; filter: drop-shadow(-2px 3px 1.5px rgba(30, 28, 25, 0.45)) drop-shadow(-10px 14px 12px rgba(30, 28, 25, 0.22)); animation: pen-drop 900ms 1500ms var(--ease-out) both; }
+.pen { position: absolute; right: 6px; bottom: 4px; width: 290px; height: auto; pointer-events: none; animation: pen-drop 900ms 1500ms var(--ease-out) both; } /* angle and shadow are in the render */
 @keyframes pen-drop {
   0% { opacity: 0; transform: translate(70px, -60px) rotate(-14deg) scale(1.08); }
   55% { opacity: 1; transform: translate(0, 5px) rotate(2.5deg) scale(1); }
@@ -177,7 +181,7 @@ button { font: inherit; color: inherit; }
   100% { opacity: 1; transform: none; }
 }
 /* The nib pops in with a twist when its line comes into view. */
-.nib { display: inline-block; vertical-align: -4px; margin-right: 8px; animation: nib-pop 650ms 250ms var(--ease-out) both; }
+.nib { display: inline-block; width: 11px; height: 22px; vertical-align: -5px; margin-right: 10px; animation: nib-pop 650ms 250ms var(--ease-out) both; }
 .js [data-reveal]:not(.in) .nib { animation: none; }
 @keyframes nib-pop {
   0% { transform: scale(0) rotate(-35deg); }
@@ -304,7 +308,7 @@ button { font: inherit; color: inherit; }
   .sec.wrap, .ask .wrap, .foot.wrap { padding-left: max(var(--margin), 220px); }
 }
 @media (max-width: 1100px) {
-  .lamp { width: 180px; right: -40px; top: -132px; }
+  .lamp { width: 165px; right: -37px; top: -156px; }
 }
 @media (max-width: 1000px) {
   .try, .runs, .ask-in { grid-template-columns: minmax(0, 1fr); }
@@ -322,8 +326,8 @@ button { font: inherit; color: inherit; }
   .try-table th:nth-child(3), .try-table td:nth-child(3) { display: none; }
   .hero-actions .btn { width: 100%; }
   .hud { display: none; }
-  .lamp { width: 132px; right: -14px; top: -98px; }
-  .pen { width: 170px; right: 10px; bottom: 44px; }
+  .lamp { width: 100px; right: -2px; top: -66px; }
+  .pen { width: 180px; right: 2px; bottom: 2px; }
 }
 
 /* ═══ SAMPLE REPORT (app) ════════════════════════════════════════════════ */
