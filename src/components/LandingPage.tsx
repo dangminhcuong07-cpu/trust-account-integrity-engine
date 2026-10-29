@@ -1,53 +1,28 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { reportSummary } from '../data';
-import { CHECKS, FINDINGS, GROUPS, LINKEDIN_URL, NOT_RUN, STATUTORY_COUNT, tidy, type Check, type GroupId } from '../lib/rules';
+import { CHECKS, FINDINGS, GROUPS, LINKEDIN_URL, NOT_RUN, STATUTORY_COUNT } from '../lib/rules';
+import { PLAIN_NAME, findingSpan, plainEvidence } from '../lib/plain';
 import { fmtDay, fmtMonth, nextCertificate } from '../lib/dates';
-import { SAMPLE_ROWS, nzd, runR01 } from '../lib/r01';
+import { SAMPLE_ROWS, checkRows, nzd, type Row } from '../lib/r01';
 
-export interface EnterOptions { focus?: string; filter?: 'all' | 'critical'; reviewer?: string }
+export interface EnterOptions { focus?: string }
 interface Props { onEnterDemo: (o?: EnterOptions) => void }
 
-const byRecord = (id: string) => FINDINGS.find(f => f.sourceRecordId === id);
-const HERO_ROWS = ['L021', 'R002', 'B031', 'B050'].map(byRecord).filter(Boolean) as typeof FINDINGS;
+const byRecord = (id: string, code?: string) => FINDINGS.find(f => f.sourceRecordId === id && (!code || f.code === code))!;
+const SHEET_ROWS = [byRecord('L021', 'R01'), byRecord('R002', 'R03'), byRecord('B031', 'R12'), byRecord('L037', 'R07')];
+const SPAN = findingSpan(FINDINGS);
+const RAN = CHECKS.length - NOT_RUN.length;
 
-function Pill({ level, children }: { level: 'crit' | 'high' | 'pass' | 'na'; children: ReactNode }) {
-  return <span className={`pill pill--${level}`}>{children}</span>;
-}
-
-function Arrow() {
-  return <span className="arrow" aria-hidden="true">→</span>;
-}
-
-function resultPill(c: Check) {
-  if (c.status === 'not_evaluated') return <Pill level="na">Not run</Pill>;
-  if (c.resultCount === 0) return <Pill level="pass">Passed</Pill>;
-  return <Pill level={c.severity === 'critical' ? 'crit' : 'high'}>{c.resultCount} {c.resultCount === 1 ? 'finding' : 'findings'}</Pill>;
-}
-
-/* Reveal the parts of each section as it arrives. Content is visible without JS. */
-function useReveal() {
-  useEffect(() => {
-    const els = Array.from(document.querySelectorAll<HTMLElement>('.rv'));
-    if (!('IntersectionObserver' in window)) { els.forEach(e => e.classList.add('in')); return; }
-    const io = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-    }, { rootMargin: '0px 0px -8% 0px' });
-    els.forEach(e => io.observe(e));
-    const safety = window.setTimeout(() => els.forEach(e => e.classList.add('in')), 4000);
-    return () => { io.disconnect(); window.clearTimeout(safety); };
-  }, []);
-}
-
-function useNzTime() {
-  const fmt = () => new Date().toLocaleTimeString('en-NZ', { timeZone: 'Pacific/Auckland', hour: 'numeric', minute: '2-digit' });
-  const [t, setT] = useState(fmt);
-  useEffect(() => { const id = window.setInterval(() => setT(fmt()), 30_000); return () => window.clearInterval(id); }, []);
-  return t;
+function resultPill(c: (typeof CHECKS)[number]) {
+  if (c.status === 'not_evaluated') return <span className="pill pill--na">Not run</span>;
+  if (c.resultCount === 0) return <span className="pill pill--pass">Passed</span>;
+  const crit = c.severity === 'critical';
+  return <span className={`pill ${crit ? 'pill--crit' : 'pill--high'}`}>{c.resultCount} {crit ? 'critical' : 'high'}</span>;
 }
 
 const FAQ = [
   { q: 'Does our ledger leave the office?', a: 'No. The engine runs on your own computer and reads files you export. This website only shows its output for a made-up firm; it cannot receive your data.' },
-  { q: 'Is it approved by the Law Society?', a: `No. It is not affiliated with or endorsed by the New Zealand Law Society. ${STATUTORY_COUNT} of its ${CHECKS.length} checks follow the Trust Account Regulations 2008; the other is an internal control.` },
+  { q: 'Is it approved by the Law Society?', a: `No. It is not affiliated with or endorsed by the New Zealand Law Society. ${STATUTORY_COUNT} of its ${CHECKS.length} checks cite the Lawyers and Conveyancers Act or its Trust Account Regulations; the other is an internal control with no direct statutory basis.` },
   { q: 'Does it use AI?', a: 'No AI decides a result. Each check is a written rule, so the same ledger gives the same report every time, and every finding points to the row it came from.' },
   { q: 'Which practice systems can it read?', a: 'CSV exports, with a column map for your system’s column names. It has not yet been run on a real firm’s export: that is the research I am doing now.' },
   { q: 'Does it replace my reconciliation?', a: 'No. It is a second look before you sign. You still reconcile, and you still decide what each finding means.' },
@@ -55,376 +30,231 @@ const FAQ = [
 ];
 
 export default function LandingPage({ onEnterDemo }: Props) {
-  useReveal();
-  const stageRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => requestAnimationFrame(() => stageRef.current?.classList.add('open')));
-    return () => cancelAnimationFrame(id);
-  }, []);
-
   const due = useMemo(() => nextCertificate(new Date()), []);
-  const [csv, setCsv] = useState(SAMPLE_ROWS);
-  const r01 = useMemo(() => runR01(csv), [csv]);
-  const [group, setGroup] = useState<GroupId>('balances');
-  const [faq, setFaq] = useState(0);
-  const [reviewer, setReviewer] = useState('Trust Account Supervisor');
-  const [filter, setFilter] = useState<'all' | 'critical'>('all');
-  const nzTime = useNzTime();
+  const [rows, setRows] = useState<Row[]>(SAMPLE_ROWS);
+  const result = useMemo(() => checkRows(rows), [rows]);
+  const edited = rows.some((r, i) => r.receipt !== SAMPLE_ROWS[i].receipt || r.payment !== SAMPLE_ROWS[i].payment);
+  const setAmount = (i: number, key: 'receipt' | 'payment', value: string) =>
+    setRows(rs => rs.map((r, j) => (j === i ? { ...r, [key]: value } : r)));
+  const bad = (s: string) => checkRows([{ ...SAMPLE_ROWS[0], receipt: s, payment: '0' }]).errors.length > 0;
 
-  const groupChecks = (id: GroupId) => GROUPS.find(g => g.id === id)!.rules.map(code => CHECKS.find(c => c.code === code)!).filter(Boolean);
-  const m028 = FINDINGS.filter(f => f.code === 'R01' && f.evidence.includes('M028'));
-  const balanceOf = (ev: string) => ev.match(/balance (-?\$[\d,.]+)/)?.[1]?.replace('-$', '−$') ?? '';
-  const dateOf = (ev: string) => ev.match(/dated (\d{4}-\d{2}-\d{2})/)?.[1] ?? '';
+  const eg = {
+    ledger: plainEvidence(byRecord('L073', 'R01')),
+    deposit: plainEvidence(byRecord('B046', 'R12')),
+    fee: plainEvidence(byRecord('L037', 'R07')),
+    recon: plainEvidence(byRecord('R002', 'R03')),
+    old: plainEvidence(byRecord('M017', 'R02')),
+  };
 
   return (
-    <div className="lp">
-      {/* ── First screen ─────────────────────────────────────────────────── */}
-      <header className="lp-wrap">
-        <nav className="lp-nav" aria-label="Main">
-          <a className="lp-word" href="#top">TrustSentry <span>· trust account checks</span></a>
+    <>
+      <a className="skip" href="#main">Skip to content</a>
+      <header className="wrap">
+        <nav className="nav" aria-label="Main">
+          <a className="word" href="#main">TrustSentry</a>
           <ul>
             <li><a href="#finds">What it finds</a></li>
             <li><a href="#checks">The checks</a></li>
-            <li><a href="#runs">How it runs</a></li>
             <li><a href="#questions">Questions</a></li>
+            <li><a className="btn btn--line" href="#talk">Talk to me</a></li>
           </ul>
         </nav>
       </header>
 
-      <main id="top">
-        <section className="lp-wrap lp-hero" aria-labelledby="hero-h">
-          <div className="lp-hero-copy">
-            <h1 id="hero-h"><span>Check the ledger</span> <span>before you sign</span></h1>
-            <p>TrustSentry reads a law firm&rsquo;s trust ledger, bank statement and invoices, and lists every entry that breaks the Trust Account Regulations, on your own computer, before the monthly certificate.</p>
-            <button className="btn" onClick={() => onEnterDemo()}>Open the sample report <Arrow /></button>
-            <p className="lp-due">
-              Your next certificate, for {fmtMonth(due.period)}, is due <strong>{fmtDay(due.due)}</strong>:{' '}
-              <strong className="num">{due.workingDaysLeft} working {due.workingDaysLeft === 1 ? 'day' : 'days'}</strong> from today, counting Monday to Friday.
+      <main id="main">
+        <section className="wrap hero" aria-labelledby="hero-h">
+          <div>
+            <h1 id="hero-h">Read the exceptions before you sign the certificate</h1>
+            <p className="hero-lede">TrustSentry checks a month of trust ledger, bank statement and invoices on your own computer, and prints a dated exception report: each entry that breaks the Trust Account Regulations, the regulation, and the row it came from.</p>
+            <div className="hero-actions">
+              <button className="btn" onClick={() => onEnterDemo()}>Read the sample report</button>
+              <a className="textlink" href="#talk">Or talk to me for 20 minutes</a>
+            </div>
+            <p className="due">
+              Your {fmtMonth(due.period).split(' ')[0]} certificate is due <strong>{fmtDay(due.due)}</strong>,{' '}
+              <strong className="num">{due.workingDaysLeft} working {due.workingDaysLeft === 1 ? 'day' : 'days'}</strong> from today (counting Monday to Friday; public holidays are not taken out).
             </p>
           </div>
 
-          <div className="lp-stage" ref={stageRef}>
-            <div className="lp-stage-inner">
-              <div className="ui" data-ui style={{ width: 640, maxWidth: 'none' }}>
-                <div className="ui-head">
-                  <span className="ui-title">Exception report · {reportSummary.firmName} (sample)</span>
-                  <span className="ui-meta num">{reportSummary.period} · {reportSummary.totalViolations} findings</span>
-                </div>
-                {HERO_ROWS.map((f, i) => (
-                  <button
-                    key={f.sourceRecordId}
-                    className={`ui-row${i === 0 ? ' is-hover' : ''}`}
-                    style={{ width: '100%', border: 0, borderBottom: '1px solid var(--ui-rule)', background: undefined, textAlign: 'left', cursor: 'pointer', font: 'inherit' }}
-                    onClick={() => onEnterDemo({ focus: f.sourceRecordId })}
-                    aria-label={`Open finding ${f.sourceRecordId}: ${f.ruleName}`}
-                  >
-                    <span className="num">{f.sourceRecordId}</span>
-                    <span><b style={{ fontWeight: 500 }}>{f.ruleName}</b><span className="ev" style={{ display: 'block' }}>{tidy(f.evidence)}</span></span>
-                    <Pill level="crit">Critical</Pill>
-                  </button>
-                ))}
-                <div className="ui-kv" style={{ background: 'var(--ui-ground)' }}>
-                  <dt>Checks run</dt><dd>{CHECKS.length - NOT_RUN.length} of {CHECKS.length}</dd>
-                  <dt>Critical · High</dt><dd>{reportSummary.criticalCount} · {reportSummary.highCount}</dd>
-                </div>
-              </div>
+          <article className="sheet" aria-labelledby="sheet-h">
+            <div className="sheet-title">
+              <b id="sheet-h">Exception report</b>
+              <span>Sample firm · entries {SPAN.from} to {SPAN.to}</span>
             </div>
-          </div>
+            <p className="sheet-counts">
+              <span><strong className="neg num">{reportSummary.criticalCount}</strong>critical</span>
+              <span><strong className="num">{reportSummary.highCount}</strong>high</span>
+              <span><strong className="num">{RAN}</strong>of {CHECKS.length} checks run</span>
+            </p>
+            {SHEET_ROWS.map(f => (
+              <button key={f.code + f.sourceRecordId} className="sheet-row" onClick={() => onEnterDemo({ focus: `${f.code}-${f.sourceRecordId}` })}>
+                <span className="mark" aria-label={f.level === 'critical' ? 'Critical' : 'High'}>{f.level === 'critical' ? '!' : ''}</span>
+                <span className="rec">{f.sourceRecordId}</span>
+                <span><b>{PLAIN_NAME[f.code]} <span className="cite">· {f.short}</span></b>{plainEvidence(f)}</span>
+              </button>
+            ))}
+            {NOT_RUN.map(c => (
+              <div key={c.code} className="sheet-row is-na">
+                <span></span><span className="rec">{c.code}</span>
+                <span><b>{PLAIN_NAME[c.code]} · not run</b>The sample has no certification dates. Not run is not a pass.</span>
+              </div>
+            ))}
+            <p className="sheet-foot">Made-up firm, synthetic data. Select a finding to open it in the full report.</p>
+          </article>
         </section>
 
-        {/* ── Showcase: the visitor's rows in, the finding out ─────────────── */}
-        <section className="lp-split" aria-label="Try one check" style={{ marginTop: 'clamp(120px, 14vh, 200px)' }}>
-          <div className="lp-in">
-            <label htmlFor="rows" className="rv">client_ledger.csv · four rows from the sample firm. Change a payment.</label>
-            <textarea id="rows" className="rv" style={{ ['--i' as string]: 1 }} value={csv} onChange={e => setCsv(e.target.value)} spellCheck={false} aria-describedby="rows-hint" />
-            <p id="rows-hint" className="hint rv" style={{ ['--i' as string]: 2 }}>This page runs one check, overdrawn client ledgers (R01), on what you type. The engine runs all {CHECKS.length} on your computer.</p>
-            <h2>Your rows</h2>
+        <section id="try" className="wrap sec" aria-labelledby="try-h">
+          <div className="sec-head">
+            <h2 id="try-h">Try one check yourself</h2>
+            <p>Four rows from the sample ledger. Change a payment and the overdrawn-ledger check runs again, here in your browser. The engine runs all {CHECKS.length} checks on your own computer.</p>
           </div>
-          <div className="lp-out">
-            <div className="ui lp-out-frag rv" data-ui aria-live="polite" style={{ ['--i' as string]: 1 }}>
-              <div className="ui-head">
-                <span className="ui-title">R01 · Overdrawn client ledger</span>
-                <span className="ui-meta">Reg 6, Reg 12(6)(a)</span>
-              </div>
-              {r01.errors.length > 0 && <p style={{ margin: 0, padding: '12px 18px', color: 'var(--crit)', fontSize: 13 }}>{r01.errors[0]}</p>}
-              <table className="ui-table">
-                <thead><tr><th>Entry</th><th>Matter</th><th>Date</th><th className="r">Balance after</th></tr></thead>
+          <div className="try">
+            <div className="try-in">
+              <table className="try-table">
+                <caption style={{ textAlign: 'left', paddingBottom: 12, color: 'var(--muted)' }}>client_ledger.csv, sample firm</caption>
+                <thead><tr><th scope="col">Entry</th><th scope="col">Matter</th><th scope="col">Date</th><th scope="col">Received</th><th scope="col">Paid out</th></tr></thead>
                 <tbody>
-                  {r01.rows.map(r => (
-                    <tr key={r.entry + r.date} className={r.balance < 0 ? 'flag' : undefined}>
-                      <td>{r.entry}</td><td>{r.matter}</td><td>{r.date}</td>
-                      <td className={`r${r.balance < 0 ? ' neg' : ''}`}>{nzd(r.balance)}</td>
+                  {rows.map((r, i) => (
+                    <tr key={r.entry}>
+                      <th scope="row">{r.entry}</th>
+                      <td>{r.matter}</td>
+                      <td>{r.date}</td>
+                      <td><input aria-label={`${r.entry} received`} inputMode="decimal" value={r.receipt} aria-invalid={bad(r.receipt)} onChange={e => setAmount(i, 'receipt', e.target.value)} /></td>
+                      <td><input aria-label={`${r.entry} paid out`} inputMode="decimal" value={r.payment} aria-invalid={bad(r.payment)} onChange={e => setAmount(i, 'payment', e.target.value)} /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--ui-rule)', background: 'var(--ui-ground)' }}>
-                {r01.findings.length === 0
-                  ? <span>No client ledger goes below zero in these rows.</span>
-                  : r01.findings.map(f => (
-                    <div key={f.entry} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '3px 0' }}>
-                      <Pill level="crit">Critical</Pill>
-                      <span>Matter {f.matter} at <b className="neg num" style={{ fontWeight: 600 }}>{nzd(f.balance)}</b> after {f.entry} on {f.date}</span>
-                    </div>
-                  ))}
+              <div className="try-actions">
+                <button className="btn btn--line" onClick={() => setRows(SAMPLE_ROWS)} disabled={!edited} aria-disabled={!edited}>Restore the sample rows</button>
               </div>
             </div>
-            <h2>Its findings</h2>
-          </div>
-        </section>
-
-        {/* ── What it finds ─────────────────────────────────────────────────── */}
-        <section id="finds" className="lp-wrap lp-features" aria-labelledby="finds-h">
-          <h2 id="finds-h" className="lp-sec-h rv">What it finds</h2>
-          <div className="lp-grid">
-            <article className="lp-cell rv">
-              <div className="lp-cell-text">
-                <h3>A client ledger below zero</h3>
-                <p>Even for a day, even if month end looks fine. Matter M028 went further below zero with each of three entries.</p>
+            <div className="try-out" aria-live="polite" aria-atomic="true">
+              <h3>R01 · {PLAIN_NAME.R01}</h3>
+              <p className="cite">Trust Account Regulations, Reg 6 and Reg 12(6)(a)</p>
+              <div className="result">
+                {!result.ran ? (
+                  <>
+                    <p className="result-head">Not run <span className="pill pill--na">Not a pass</span></p>
+                    <p>Nothing was checked because {result.errors.length === 1 ? 'one amount' : `${result.errors.length} amounts`} could not be read:</p>
+                    <ul>{result.errors.map(e => <li key={e}>{e}</li>)}</ul>
+                  </>
+                ) : result.findings.length === 0 ? (
+                  <p className="result-head">No client ledger goes below zero in these rows <span className="pill pill--pass">Passed</span></p>
+                ) : (
+                  <>
+                    <p className="result-head">{result.findings.length} {result.findings.length === 1 ? 'finding' : 'findings'} <span className="pill pill--crit">Critical</span></p>
+                    {result.findings.map(f => (
+                      <p key={f.entry}>Matter {f.matter} went to <span className="money neg">{nzd(f.balance)}</span> after entry {f.entry}.</p>
+                    ))}
+                  </>
+                )}
               </div>
-              <div className="lp-cell-frag">
-                <table className="ui ui-table" data-ui style={{ borderRadius: '8px 0 0 0', borderRight: 0, borderBottom: 0 }}>
-                  <thead><tr><th>Entry</th><th>Date</th><th className="r">M028 balance</th></tr></thead>
-                  <tbody>{m028.map(f => <tr key={f.sourceRecordId} className="flag"><td>{f.sourceRecordId}</td><td>{dateOf(f.evidence)}</td><td className="r neg">{balanceOf(f.evidence)}</td></tr>)}</tbody>
+              {result.ran && (
+                <table className="balances">
+                  <thead><tr><th scope="col">Entry</th><th scope="col">Matter</th><th scope="col" className="r">Balance after</th></tr></thead>
+                  <tbody>{result.rows.map(r => (
+                    <tr key={r.entry}><td>{r.entry}</td><td>{r.matter}</td><td className={`r money${(r.balance ?? 0) < 0 ? ' neg' : ''}`}>{nzd(r.balance ?? 0)}</td></tr>
+                  ))}</tbody>
                 </table>
-              </div>
-            </article>
-
-            <article className="lp-cell frag-top frag-right rv" style={{ ['--i' as string]: 1 }}>
-              <div className="lp-cell-text">
-                <h3>Deposits nobody allocated</h3>
-                <p>A bulk deposit has to be split to clients. B046 brought in $9,000.00 and only $7,500.00 was allocated.</p>
-              </div>
-              <div className="lp-cell-frag">
-                <div className="ui" data-ui style={{ borderRadius: '0 0 8px 0', borderLeft: 0, borderTop: 0 }}>
-                  <div className="ui-head"><span className="ui-title">Bank line B046 · 24 Jun 2026</span></div>
-                  <dl className="ui-kv">
-                    <dt>Credit</dt><dd>$9,000.00</dd>
-                    <dt>Allocated (3 rows)</dt><dd>$7,500.00</dd>
-                    <dt><b style={{ color: 'var(--ink)', fontWeight: 500 }}>Not allocated</b></dt><dd className="neg">$1,500.00</dd>
-                  </dl>
-                </div>
-              </div>
-            </article>
-
-            <article className="lp-cell rv" style={{ ['--i' as string]: 2 }}>
-              <div className="lp-cell-text">
-                <h3>Fees taken without an invoice</h3>
-                <p>Money moved to the office account needs an invoice behind it, issued in time.</p>
-              </div>
-              <div className="lp-cell-frag">
-                <div className="ui" data-ui style={{ borderRadius: '8px 0 0 0', borderRight: 0, borderBottom: 0 }}>
-                  {['L037', 'L039', 'L041'].map(byRecord).filter(Boolean).map(f => (
-                    <div key={f!.sourceRecordId} className="ui-row" style={{ gridTemplateColumns: '48px 1fr' }}>
-                      <span className="num">{f!.sourceRecordId}</span>
-                      <span>{f!.ruleName}<span className="ev" style={{ display: 'block' }}>{f!.short}</span></span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </article>
-
-            <article className="lp-cell frag-top rv">
-              <div className="lp-cell-text">
-                <h3>A ledger that disagrees with the bank</h3>
-                <p>At the end of April the bank held $250.00 more than the ledger said it should.</p>
-              </div>
-              <div className="lp-cell-frag">
-                <div className="ui" data-ui style={{ borderRadius: '0 0 0 8px', borderRight: 0, borderTop: 0 }}>
-                  <div className="ui-head"><span className="ui-title">Reconciliation · 30 Apr 2026</span></div>
-                  <dl className="ui-kv">
-                    <dt>Ledger total</dt><dd>$798,500.00</dd>
-                    <dt>Bank balance</dt><dd>$798,750.00</dd>
-                    <dt>Difference</dt><dd className="neg">$250.00</dd>
-                  </dl>
-                </div>
-              </div>
-            </article>
-
-            <article className="lp-cell frag-right rv" style={{ ['--i' as string]: 1 }}>
-              <div className="lp-cell-text">
-                <h3>A check that could not run says so</h3>
-                <p>The sample has no certification dates, so the timing check is shown as not run. It is never counted as a pass.</p>
-              </div>
-              <div className="lp-cell-frag">
-                <div className="ui" data-ui style={{ borderRadius: '0 8px 0 0', borderLeft: 0, borderBottom: 0 }}>
-                  {CHECKS.filter(c => ['R13', 'R14'].includes(c.code)).map(c => (
-                    <div key={c.code} className="ui-row" style={{ gridTemplateColumns: '40px 1fr auto' }}>
-                      <span className="num">{c.code}</span><span>{c.name}</span>{resultPill(c)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </article>
-
-            <article className="lp-cell frag-top rv" style={{ ['--i' as string]: 2 }}>
-              <div className="lp-cell-text">
-                <h3>Every finding names its regulation</h3>
-                <p>And the row it came from, so you can check it yourself in the export.</p>
-              </div>
-              <div className="lp-cell-frag">
-                <div className="ui" data-ui style={{ borderRadius: '0 0 0 8px', borderRight: 0, borderTop: 0 }}>
-                  <dl className="ui-kv">
-                    <dt>Record</dt><dd>L021</dd>
-                    <dt>Check</dt><dd>R01 · Overdrawn client ledger</dd>
-                    <dt>Regulation</dt><dd>Reg 6 and Reg 12(6)(a)</dd>
-                    <dt>Balance after</dt><dd className="neg">−$2,500.00</dd>
-                  </dl>
-                </div>
-              </div>
-            </article>
+              )}
+            </div>
           </div>
         </section>
 
-        {/* ── The checks ────────────────────────────────────────────────────── */}
-        <section id="checks" className="lp-wrap lp-checks" aria-labelledby="checks-h">
-          <div className="lp-checks-head rv">
-            <h2 id="checks-h"><span>{CHECKS.length} checks.</span> <span>{STATUTORY_COUNT} from the Regulations.</span></h2>
-            <button className="btn btn--ink" onClick={() => onEnterDemo()}>Open the sample report <Arrow /></button>
+        <section id="finds" className="wrap sec" aria-labelledby="finds-h">
+          <div className="sec-head"><h2 id="finds-h">What it finds</h2><p>Examples from the sample report, in the words the report uses.</p></div>
+          <ul className="finds">
+            <li><h3>A client ledger below zero</h3><p>Even for a day, even if month end looks fine.</p><p className="eg">{eg.ledger}</p></li>
+            <li><h3>Deposits nobody allocated</h3><p>A bulk deposit has to be split across clients, to the cent.</p><p className="eg">{eg.deposit}</p></li>
+            <li><h3>Fees taken without an invoice</h3><p>Money moved to the office account needs an invoice behind it, issued in time.</p><p className="eg">{eg.fee}</p></li>
+            <li><h3>A ledger that disagrees with the bank</h3><p>The reconciliation has to balance, not just look close.</p><p className="eg">{eg.recon}</p></li>
+            <li><h3>Money left sitting too long</h3><p>Balances with no activity for more than a year are flagged for follow-up.</p><p className="eg">{eg.old}</p></li>
+            <li><h3>A check that could not run says so</h3><p>When the input lacks what a check needs, the report says not run. It is never counted as a pass.</p><p className="eg">In the sample, {NOT_RUN.map(c => `${c.code} (${PLAIN_NAME[c.code].toLowerCase()})`).join(', ')} did not run: there are no certification dates.</p></li>
+          </ul>
+        </section>
+
+        <section id="checks" className="wrap sec" aria-labelledby="checks-h">
+          <div className="sec-head">
+            <h2 id="checks-h">The {CHECKS.length} checks</h2>
+            <p>{STATUTORY_COUNT} cite the Lawyers and Conveyancers Act or its Trust Account Regulations; one is an internal control. The result column is the sample firm’s.</p>
           </div>
-          <div className="lp-checks-body">
-            <div className="lp-tabs" role="tablist" aria-label="Groups of checks">
+          <div className="checks">
+            <table>
+              <thead><tr><th scope="col">Check</th><th scope="col">What it looks for</th><th scope="col">Source</th><th scope="col" style={{ textAlign: 'right' }}>Sample result</th></tr></thead>
               {GROUPS.map(g => (
-                <button key={g.id} role="tab" id={`tab-${g.id}`} aria-selected={group === g.id} aria-controls="bands" className="lp-tab" onClick={() => setGroup(g.id)}>
-                  <b>{g.label}</b><small>{g.rules.length} checks · {g.note.toLowerCase()}</small>
-                </button>
+                <tbody key={g.id}>
+                  <tr><th colSpan={4} scope="colgroup">{g.label}</th></tr>
+                  {g.rules.map(code => CHECKS.find(c => c.code === code)!).map(c => (
+                    <tr key={c.code}>
+                      <td className="code">{c.code}</td>
+                      <td>{PLAIN_NAME[c.code]}</td>
+                      <td className="cite">{c.sourceUrl ? <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer">{c.short}</a> : `${c.short}, no direct statutory basis`}</td>
+                      <td className="res">{resultPill(c)}</td>
+                    </tr>
+                  ))}
+                </tbody>
               ))}
-            </div>
-            <div id="bands" className="lp-bands" role="tabpanel" aria-labelledby={`tab-${group}`} key={group}>
-              {groupChecks(group).map((c, i) => (
-                <div key={c.code} className="lp-band" style={{ ['--i' as string]: i }}>
-                  <span className="lp-band-code">{c.code}</span>
-                  <span className="lp-band-name">{c.name}</span>
-                  <span className="lp-band-cite">{c.sourceUrl ? <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer">{c.short}</a> : `${c.short}, no direct statutory basis`}</span>
-                  <span className="lp-band-res">{resultPill(c)}</span>
-                </div>
-              ))}
-            </div>
+            </table>
           </div>
         </section>
 
-        {/* ── How it runs ───────────────────────────────────────────────────── */}
-        <section id="runs" className="lp-steps" aria-labelledby="runs-h">
-          <div className="lp-step">
-            <h2 id="runs-h">How it runs</h2>
-            <div className="lp-step-card ui rv" data-ui>
-              <div className="ui-head"><span className="ui-title">Export · May 2026</span></div>
-              <dl className="ui-kv" style={{ fontSize: 13 }}>
-                <dt>client_ledger.csv</dt><dd>ledger</dd>
-                <dt>trust_bank_statement.csv</dt><dd>bank</dd>
-                <dt>invoice_register.csv</dt><dd>invoices</dd>
-                <dt>+3 more</dt><dd>matters, allocations, reconciliations</dd>
-              </dl>
-            </div>
-            <p className="lp-step-say">First you export the month from your practice system.</p>
-          </div>
-          <div className="lp-step">
-            <div className="lp-step-card ui rv" data-ui style={{ ['--i' as string]: 1 }}>
-              <div className="ui-head"><span className="ui-title">Checking on this computer</span></div>
-              <dl className="ui-kv">
-                <dt>Checks run</dt><dd>{CHECKS.length - NOT_RUN.length} of {CHECKS.length}</dd>
-                <dt>Not run</dt><dd>{NOT_RUN.map(c => c.code).join(', ') || 'none'}</dd>
-                <dt>Uploaded</dt><dd>nothing</dd>
-              </dl>
-            </div>
-            <p className="lp-step-say">Then the engine checks it where it already sits.</p>
-          </div>
-          <div className="lp-step">
-            <figure className="lp-step-card rv" style={{ ['--i' as string]: 2 }}>
-              <img className="ui-shot" src="/img/report-page-1.png" width={909} height={1286} alt="Page 1 of the exception report: firm, period, 23 exceptions, and the first critical finding with its regulation, record and action." loading="lazy" />
+        <section id="runs" className="wrap sec" aria-labelledby="runs-h">
+          <div className="sec-head"><h2 id="runs-h">How it runs</h2></div>
+          <div className="runs">
+            <ol>
+              <li><div><h3>Export</h3><p>Export the month from your practice system as CSV: client ledger, trust bank statement, invoices, matters, allocations and reconciliations.</p></div></li>
+              <li><div><h3>Check, on your computer</h3><p>The engine reads the files where they already are. Nothing is uploaded and no account is needed.</p></div></li>
+              <li><div><h3>Read the report</h3><p>A dated PDF lists every exception with its regulation, the record and what to do next.</p></div></li>
+              <li><div><h3>Sign, knowing what is behind each figure</h3><p>Note the cause and the fix against each finding, and keep the report with the certificate.</p></div></li>
+            </ol>
+            <figure>
+              <img src="/img/report-page-1.png" width={909} height={1286} loading="lazy" alt="Page 1 of the sample exception report: the firm, period, 23 exceptions, and the first critical finding with its regulation, record and action." />
+              <figcaption>Page 1 of the sample report the engine printed. <a href="/exception_report.pdf" download>Download the PDF</a></figcaption>
             </figure>
-            <p className="lp-step-say">Then you read the report, finding by finding.</p>
-          </div>
-          <div className="lp-step">
-            <div className="lp-step-card ui rv" data-ui style={{ ['--i' as string]: 3 }}>
-              <div className="ui-head"><span className="ui-title">L021 · your note</span></div>
-              <dl className="ui-kv" style={{ textAlign: 'left' }}>
-                <dt>Found</dt><dd>Payment exceeded receipts</dd>
-                <dt>Cause</dt><dd>for you to write</dd>
-                <dt>Fixed on</dt><dd>for you to write</dd>
-              </dl>
-            </div>
-            <p className="lp-step-say">Then you sign, knowing what is behind each figure.</p>
           </div>
         </section>
 
-        {/* ── Questions ─────────────────────────────────────────────────────── */}
-        <section id="questions" className="lp-wrap lp-faq" aria-labelledby="faq-h">
-          <div className="lp-faq-list">
-            <h2 id="faq-h">Questions</h2>
+        <section id="questions" className="wrap sec" aria-labelledby="faq-h">
+          <div className="sec-head"><h2 id="faq-h">Questions</h2></div>
+          <div className="qs">
             {FAQ.map((f, i) => (
-              <div key={f.q}>
-                <button className="lp-q" aria-expanded={faq === i} onClick={() => setFaq(i)} onMouseEnter={() => setFaq(i)} onFocus={() => setFaq(i)}>{f.q}</button>
-                {faq === i && <p className="lp-a-inline">{f.a}</p>}
-              </div>
+              <details key={f.q} open={i === 0}>
+                <summary>{f.q}</summary>
+                <p>{f.a}</p>
+              </details>
             ))}
           </div>
-          <div className="lp-faq-pane" aria-live="polite">
-            <p key={faq}>{FAQ[faq].a}</p>
-          </div>
         </section>
 
-        {/* ── Close: the first step, already open ───────────────────────────── */}
-        <section className="lp-wrap lp-cta" aria-labelledby="cta-h">
-          <div className="lp-cta-copy">
-            <h2 id="cta-h">See it<br />run</h2>
-            <p>Opens the report the engine wrote for a made-up firm. Nothing to install, nothing to upload.</p>
-          </div>
-          <form
-            className="lp-cta-dialog ui ui-dialog"
-            data-ui
-            onSubmit={e => { e.preventDefault(); onEnterDemo({ filter, reviewer: reviewer.trim() || undefined }); }}
-          >
-            <div className="ui-head"><span className="ui-title">Open a report</span><span className="ui-meta">{reportSummary.firmName} (sample) · {reportSummary.period}</span></div>
-            <div className="ui-body">
-              <div className="ui-field">
-                <label htmlFor="reviewer">Reviewing as</label>
-                <input id="reviewer" value={reviewer} onChange={e => setReviewer(e.target.value)} autoComplete="off" />
+        <section id="talk" className="ask" aria-labelledby="talk-h">
+          <div className="wrap ask-in">
+            <div>
+              <h2 id="talk-h">Twenty minutes about certificate week</h2>
+              <p>I’m an accounting graduate in Auckland, researching how sole practitioners and small firms prepare the monthly trust account certificate. I’m not selling anything, and I won’t ask for any client data.</p>
+              <div className="hero-actions">
+                <a className="btn btn--light" href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">Message me on LinkedIn</a>
+                <button className="textlink" style={{ color: '#fff' }} onClick={() => onEnterDemo()}>Read the sample report first</button>
               </div>
-              <div className="ui-field">
-                <label id="show-label">Show</label>
-                <div className="seg" role="group" aria-labelledby="show-label">
-                  <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>All {reportSummary.totalViolations}</button>
-                  <button type="button" aria-pressed={filter === 'critical'} onClick={() => setFilter('critical')}>Critical {reportSummary.criticalCount}</button>
-                </div>
-              </div>
-              <button type="submit" className="ui-primary">Open the sample report</button>
             </div>
-          </form>
+            <div>
+              <h3>What I’ll ask you</h3>
+              <ol>
+                <li>Walk me through your last certificate week.</li>
+                <li>Which step takes longest, and which worries you most?</li>
+                <li>When did a reconciliation last not balance, and what did you do?</li>
+                <li>What would make you trust a check like this, or ignore it?</li>
+              </ol>
+              <p className="aside">Michael Dang, Auckland.</p>
+            </div>
+          </div>
         </section>
       </main>
 
-      {/* ── Footer of tiles ─────────────────────────────────────────────────── */}
-      <footer>
-        <div className="lp-foot">
-          <div className="lp-tile lp-t-statement">
-            <p>Every figure on this site comes from the engine, run on a made-up firm&rsquo;s ledger.</p>
-            <small>Not affiliated with or endorsed by the New Zealand Law Society. Not legal advice.</small>
-          </div>
-          <nav className="lp-tile lp-t-nav" aria-label="Footer">
-            <ul>
-              <li><a href="#finds">What it finds</a></li>
-              <li><a href="#checks">The checks</a></li>
-              <li><a href="#runs">How it runs</a></li>
-              <li><a href="#questions">Questions</a></li>
-            </ul>
-          </nav>
-          <div className="lp-tile lp-t-time">
-            <p>Auckland</p>
-            <p className="num">{nzTime}</p>
-          </div>
-          <div className="lp-tile lp-t-contact">
-            <p>Talk to me about certificate week</p>
-            <a className="link" href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">Michael Dang on LinkedIn</a>
-          </div>
-          <div className="lp-tile lp-t-word" aria-hidden="true"><span>TrustSentry</span></div>
-          <button className="lp-tile lp-t-go" onClick={() => onEnterDemo()}>
-            <span>Open the sample report</span>
-            <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true"><path d="M14 42 42 14M20 14h22v22" stroke="currentColor" strokeWidth="4" /></svg>
-          </button>
-        </div>
-        <p className="lp-credit">Built by Michael Dang in Auckland. The sample report is generated from synthetic data; it describes no real firm, client or matter.</p>
+      <footer className="wrap foot">
+        <p>Every figure on this site comes from the engine, run on a made-up firm’s ledger. It describes no real firm, client or matter.</p>
+        <p>Not affiliated with or endorsed by the New Zealand Law Society. Not legal advice.</p>
       </footer>
-    </div>
+    </>
   );
 }
