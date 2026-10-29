@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { reportSummary } from '../data';
 import { CHECKS, FINDINGS, GROUPS, LINKEDIN_URL, NOT_RUN, STATUTORY_COUNT } from '../lib/rules';
 import { PLAIN_NAME, findingSpan, plainEvidence } from '../lib/plain';
 import { fmtDay, fmtMonth, nextCertificate } from '../lib/dates';
 import { SAMPLE_ROWS, checkRows, nzd, type Row } from '../lib/r01';
+import { useActiveSection, useNow, useScrollMotion } from '../lib/scroll';
 
 export interface EnterOptions { focus?: string }
 interface Props { onEnterDemo: (o?: EnterOptions) => void }
@@ -20,6 +21,51 @@ function resultPill(c: (typeof CHECKS)[number]) {
   return <span className={`pill ${crit ? 'pill--crit' : 'pill--high'}`}>{c.resultCount} {crit ? 'critical' : 'high'}</span>;
 }
 
+// The side index (desktop): one entry per section, numbered like the report's own sections.
+const INDEX = [
+  { id: 'try', label: 'Try a check' },
+  { id: 'finds', label: 'What it finds' },
+  { id: 'checks', label: 'The checks' },
+  { id: 'due', label: 'Your certificate' },
+  { id: 'runs', label: 'How it runs' },
+  { id: 'questions', label: 'Questions' },
+  { id: 'talk', label: 'Talk to me' },
+];
+const INDEX_IDS = INDEX.map(i => i.id);
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** A section heading with its word drifting behind it, outlined, as the section scrolls past. */
+function SecHead({ id, n, word, children, lede }: { id: string; n: number; word: string; children: ReactNode; lede?: ReactNode }) {
+  return (
+    <div className="sec-head" data-progress>
+      <span className="drift" aria-hidden="true">{word}</span>
+      <p className="sec-n">{pad(n)}</p>
+      <h2 id={id}>{children}</h2>
+      {lede && <p className="sec-lede">{lede}</p>}
+    </div>
+  );
+}
+
+/** Time left until the end of the due day, in the viewer's own time zone. */
+function Countdown({ due }: { due: Date }) {
+  const now = useNow();
+  const end = new Date(due.getFullYear(), due.getMonth(), due.getDate() + 1);
+  const s = Math.max(0, Math.floor((end.getTime() - now.getTime()) / 1000));
+  const parts = [
+    { v: Math.floor(s / 86400), u: 'days' },
+    { v: Math.floor(s / 3600) % 24, u: 'hours' },
+    { v: Math.floor(s / 60) % 60, u: 'minutes' },
+    { v: s % 60, u: 'seconds' },
+  ];
+  return (
+    <p className="clock" role="timer" aria-label={`${parts[0].v} days and ${parts[1].v} hours left`}>
+      {parts.map((p, i) => (
+        <span key={p.u}>{i > 0 && <i aria-hidden="true">:</i>}<span className="unit"><b className="num">{pad(p.v)}</b><small>{p.u}</small></span></span>
+      ))}
+    </p>
+  );
+}
+
 const FAQ = [
   { q: 'Does our ledger leave the office?', a: 'No. The engine runs on your own computer and reads files you export. This website only shows its output for a made-up firm; it cannot receive your data.' },
   { q: 'Is it approved by the Law Society?', a: `No. It is not affiliated with or endorsed by the New Zealand Law Society. ${STATUTORY_COUNT} of its ${CHECKS.length} checks cite the Lawyers and Conveyancers Act or its Trust Account Regulations; the other is an internal control with no direct statutory basis.` },
@@ -31,6 +77,9 @@ const FAQ = [
 
 export default function LandingPage({ onEnterDemo }: Props) {
   const due = useMemo(() => nextCertificate(new Date()), []);
+  const month = fmtMonth(due.period).split(' ')[0];
+  const active = useActiveSection(INDEX_IDS);
+  useScrollMotion();
   const [rows, setRows] = useState<Row[]>(SAMPLE_ROWS);
   const result = useMemo(() => checkRows(rows), [rows]);
   const edited = rows.some((r, i) => r.receipt !== SAMPLE_ROWS[i].receipt || r.payment !== SAMPLE_ROWS[i].payment);
@@ -49,69 +98,75 @@ export default function LandingPage({ onEnterDemo }: Props) {
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
-      <header className="wrap">
+      <header className="top">
         <nav className="nav" aria-label="Main">
-          <a className="word" href="#main">TrustSentry</a>
+          <a className="word" href="#main" aria-label="TrustSentry, top of page">TrustSentry</a>
           <ul>
             <li><a href="#finds">What it finds</a></li>
             <li><a href="#checks">The checks</a></li>
             <li><a href="#questions">Questions</a></li>
-            <li><a className="btn btn--line" href="#talk">Talk to me</a></li>
+            <li><a className="btn btn--light" href="#talk">Talk to me</a></li>
           </ul>
         </nav>
       </header>
 
+      <nav className="index" aria-label="Sections">
+        <ol>
+          {INDEX.map((s, i) => (
+            <li key={s.id}><a href={`#${s.id}`} aria-current={active === s.id ? 'location' : undefined}><span className="num">{pad(i + 1)}</span>{s.label}</a></li>
+          ))}
+        </ol>
+      </nav>
+
       <main id="main">
-        <section className="wrap hero" aria-labelledby="hero-h">
-          <div>
-            <h1 id="hero-h">Read the exceptions before you sign the certificate</h1>
+        <section className="hero" aria-labelledby="hero-h">
+          <div className="hero-copy">
+            <h1 id="hero-h"><span>Read the exceptions</span> <em>before you sign</em></h1>
             <p className="hero-lede">TrustSentry checks a month of trust ledger, bank statement and invoices on your own computer, and prints a dated exception report: each entry that breaks the Trust Account Regulations, the regulation, and the row it came from.</p>
             <div className="hero-actions">
               <button className="btn" onClick={() => onEnterDemo()}>Read the sample report</button>
               <a className="textlink" href="#talk">Or talk to me for 20 minutes</a>
             </div>
-            <p className="due">
-              Your {fmtMonth(due.period).split(' ')[0]} certificate is due <strong>{fmtDay(due.due)}</strong>,{' '}
-              <strong className="num">{due.workingDaysLeft} working {due.workingDaysLeft === 1 ? 'day' : 'days'}</strong> from today (counting Monday to Friday; public holidays are not taken out).
-            </p>
           </div>
 
-          <article className="sheet" aria-labelledby="sheet-h">
-            <div className="sheet-title">
-              <b id="sheet-h">Exception report</b>
-              <span>Sample firm · entries {SPAN.from} to {SPAN.to}</span>
-            </div>
-            <p className="sheet-counts">
-              <span><strong className="neg num">{reportSummary.criticalCount}</strong>critical</span>
-              <span><strong className="num">{reportSummary.highCount}</strong>high</span>
-              <span><strong className="num">{RAN}</strong>of {CHECKS.length} checks run</span>
-            </p>
-            {SHEET_ROWS.map(f => (
-              <button key={f.code + f.sourceRecordId} className="sheet-row" onClick={() => onEnterDemo({ focus: `${f.code}-${f.sourceRecordId}` })}>
-                <span className="mark" aria-label={f.level === 'critical' ? 'Critical' : 'High'}>{f.level === 'critical' ? '!' : ''}</span>
-                <span className="rec">{f.sourceRecordId}</span>
-                <span><b>{PLAIN_NAME[f.code]} <span className="cite">· {f.short}</span></b>{plainEvidence(f)}</span>
-              </button>
-            ))}
-            {NOT_RUN.map(c => (
-              <div key={c.code} className="sheet-row is-na">
-                <span></span><span className="rec">{c.code}</span>
-                <span><b>{PLAIN_NAME[c.code]} · not run</b>The sample has no certification dates. Not run is not a pass.</span>
+          <div className="stage" data-progress>
+            <article className="sheet paper" aria-labelledby="sheet-h">
+              <div className="sheet-title">
+                <b id="sheet-h">Exception report</b>
+                <span>Sample firm · entries {SPAN.from} to {SPAN.to}</span>
               </div>
-            ))}
-            <p className="sheet-foot">Made-up firm, synthetic data. Select a finding to open it in the full report.</p>
-          </article>
+              <p className="sheet-counts">
+                <span><strong className="neg num">{reportSummary.criticalCount}</strong>critical</span>
+                <span><strong className="num">{reportSummary.highCount}</strong>high</span>
+                <span><strong className="num">{RAN}</strong>of {CHECKS.length} checks run</span>
+              </p>
+              {SHEET_ROWS.map(f => (
+                <button key={f.code + f.sourceRecordId} className="sheet-row" onClick={() => onEnterDemo({ focus: `${f.code}-${f.sourceRecordId}` })}>
+                  <span className="mark" aria-label={f.level === 'critical' ? 'Critical' : 'High'}>{f.level === 'critical' ? '!' : ''}</span>
+                  <span className="rec">{f.sourceRecordId}</span>
+                  <span><b>{PLAIN_NAME[f.code]} <span className="cite">· {f.short}</span></b>{plainEvidence(f)}</span>
+                </button>
+              ))}
+              {NOT_RUN.map(c => (
+                <div key={c.code} className="sheet-row is-na">
+                  <span></span><span className="rec">{c.code}</span>
+                  <span><b>{PLAIN_NAME[c.code]} · not run</b>The sample has no certification dates. Not run is not a pass.</span>
+                </div>
+              ))}
+              <p className="sheet-foot">Made-up firm, synthetic data. Select a finding to open it in the full report.</p>
+            </article>
+          </div>
+
+          <p className="hud hud--l" aria-hidden="true"><span className="cue"></span>Scroll</p>
+          <p className="hud hud--r"><a href="#due">{month} certificate due {fmtDay(due.due)}</a></p>
         </section>
 
         <section id="try" className="wrap sec" aria-labelledby="try-h">
-          <div className="sec-head">
-            <h2 id="try-h">Try one check yourself</h2>
-            <p>Four rows from the sample ledger. Change a payment and the overdrawn-ledger check runs again, here in your browser. The engine runs all {CHECKS.length} checks on your own computer.</p>
-          </div>
-          <div className="try">
+          <SecHead id="try-h" n={1} word="Try it" lede={<>Four rows from the sample ledger. Change a payment and the overdrawn-ledger check runs again, here in your browser. The engine runs all {CHECKS.length} checks on your own computer.</>}>Try one check yourself</SecHead>
+          <div className="try" data-reveal>
             <div className="try-in">
               <table className="try-table">
-                <caption style={{ textAlign: 'left', paddingBottom: 12, color: 'var(--muted)' }}>client_ledger.csv, sample firm</caption>
+                <caption>client_ledger.csv, sample firm</caption>
                 <thead><tr><th scope="col">Entry</th><th scope="col">Matter</th><th scope="col">Date</th><th scope="col">Received</th><th scope="col">Paid out</th></tr></thead>
                 <tbody>
                   {rows.map((r, i) => (
@@ -163,25 +218,22 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </section>
 
         <section id="finds" className="wrap sec" aria-labelledby="finds-h">
-          <div className="sec-head"><h2 id="finds-h">What it finds</h2><p>Examples from the sample report, in the words the report uses.</p></div>
+          <SecHead id="finds-h" n={2} word="Exceptions" lede="Examples from the sample report, in the words the report uses.">What it finds</SecHead>
           <ul className="finds">
-            <li><h3>A client ledger below zero</h3><p>Even for a day, even if month end looks fine.</p><p className="eg">{eg.ledger}</p></li>
-            <li><h3>Deposits nobody allocated</h3><p>A bulk deposit has to be split across clients, to the cent.</p><p className="eg">{eg.deposit}</p></li>
-            <li><h3>Fees taken without an invoice</h3><p>Money moved to the office account needs an invoice behind it, issued in time.</p><p className="eg">{eg.fee}</p></li>
-            <li><h3>A ledger that disagrees with the bank</h3><p>The reconciliation has to balance, not just look close.</p><p className="eg">{eg.recon}</p></li>
-            <li><h3>Money left sitting too long</h3><p>Balances with no activity for more than a year are flagged for follow-up.</p><p className="eg">{eg.old}</p></li>
-            <li><h3>A check that could not run says so</h3><p>When the input lacks what a check needs, the report says not run. It is never counted as a pass.</p><p className="eg">In the sample, {NOT_RUN.map(c => `${c.code} (${PLAIN_NAME[c.code].toLowerCase()})`).join(', ')} did not run: there are no certification dates.</p></li>
+            <li data-reveal><h3>A client ledger below zero</h3><p>Even for a day, even if month end looks fine.</p><p className="eg">{eg.ledger}</p></li>
+            <li data-reveal><h3>Deposits nobody allocated</h3><p>A bulk deposit has to be split across clients, to the cent.</p><p className="eg">{eg.deposit}</p></li>
+            <li data-reveal><h3>Fees taken without an invoice</h3><p>Money moved to the office account needs an invoice behind it, issued in time.</p><p className="eg">{eg.fee}</p></li>
+            <li data-reveal><h3>A ledger that disagrees with the bank</h3><p>The reconciliation has to balance, not just look close.</p><p className="eg">{eg.recon}</p></li>
+            <li data-reveal><h3>Money left sitting too long</h3><p>Balances with no activity for more than a year are flagged for follow-up.</p><p className="eg">{eg.old}</p></li>
+            <li data-reveal><h3>A check that could not run says so</h3><p>When the input lacks what a check needs, the report says not run. It is never counted as a pass.</p><p className="eg">In the sample, {NOT_RUN.map(c => `${c.code} (${PLAIN_NAME[c.code].toLowerCase()})`).join(', ')} did not run: there are no certification dates.</p></li>
           </ul>
         </section>
 
         <section id="checks" className="wrap sec" aria-labelledby="checks-h">
-          <div className="sec-head">
-            <h2 id="checks-h">The {CHECKS.length} checks</h2>
-            <p>{STATUTORY_COUNT} cite the Lawyers and Conveyancers Act or its Trust Account Regulations; one is an internal control. The result column is the sample firm’s.</p>
-          </div>
-          <div className="checks">
+          <SecHead id="checks-h" n={3} word="The checks" lede={<>{STATUTORY_COUNT} cite the Lawyers and Conveyancers Act or its Trust Account Regulations; one is an internal control. The result column is the sample firm’s.</>}>The {CHECKS.length} checks</SecHead>
+          <div className="checks" data-reveal>
             <table>
-              <thead><tr><th scope="col">Check</th><th scope="col">What it looks for</th><th scope="col">Source</th><th scope="col" style={{ textAlign: 'right' }}>Sample result</th></tr></thead>
+              <thead><tr><th scope="col">Check</th><th scope="col">What it looks for</th><th scope="col">Source</th><th scope="col" className="res">Sample result</th></tr></thead>
               {GROUPS.map(g => (
                 <tbody key={g.id}>
                   <tr><th colSpan={4} scope="colgroup">{g.label}</th></tr>
@@ -199,16 +251,21 @@ export default function LandingPage({ onEnterDemo }: Props) {
           </div>
         </section>
 
+        <section id="due" className="wrap sec due" aria-labelledby="due-h">
+          <SecHead id="due-h" n={4} word="Certificate" lede={<>Due {fmtDay(due.due)}: <strong className="num">{due.workingDaysLeft} working {due.workingDaysLeft === 1 ? 'day' : 'days'}</strong> from today, counting Monday to Friday (public holidays are not taken out). The clock runs to the end of that day, in your time zone.</>}>Your {month} certificate</SecHead>
+          <div data-reveal><Countdown due={due.due} /></div>
+        </section>
+
         <section id="runs" className="wrap sec" aria-labelledby="runs-h">
-          <div className="sec-head"><h2 id="runs-h">How it runs</h2></div>
+          <SecHead id="runs-h" n={5} word="Four steps">How it runs</SecHead>
           <div className="runs">
             <ol>
-              <li><div><h3>Export</h3><p>Export the month from your practice system as CSV: client ledger, trust bank statement, invoices, matters, allocations and reconciliations.</p></div></li>
-              <li><div><h3>Check, on your computer</h3><p>The engine reads the files where they already are. Nothing is uploaded and no account is needed.</p></div></li>
-              <li><div><h3>Read the report</h3><p>A dated PDF lists every exception with its regulation, the record and what to do next.</p></div></li>
-              <li><div><h3>Sign, knowing what is behind each figure</h3><p>Note the cause and the fix against each finding, and keep the report with the certificate.</p></div></li>
+              <li data-reveal><div><h3>Export</h3><p>Export the month from your practice system as CSV: client ledger, trust bank statement, invoices, matters, allocations and reconciliations.</p></div></li>
+              <li data-reveal><div><h3>Check, on your computer</h3><p>The engine reads the files where they already are. Nothing is uploaded and no account is needed.</p></div></li>
+              <li data-reveal><div><h3>Read the report</h3><p>A dated PDF lists every exception with its regulation, the record and what to do next.</p></div></li>
+              <li data-reveal><div><h3>Sign, knowing what is behind each figure</h3><p>Note the cause and the fix against each finding, and keep the report with the certificate.</p></div></li>
             </ol>
-            <figure>
+            <figure className="lit" data-reveal>
               <img src="/img/report-page-1.png" width={909} height={1286} loading="lazy" alt="Page 1 of the sample exception report: the firm, period, 23 exceptions, and the first critical finding with its regulation, record and action." />
               <figcaption>Page 1 of the sample report the engine printed. <a href="/exception_report.pdf" download>Download the PDF</a></figcaption>
             </figure>
@@ -216,7 +273,7 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </section>
 
         <section id="questions" className="wrap sec" aria-labelledby="faq-h">
-          <div className="sec-head"><h2 id="faq-h">Questions</h2></div>
+          <SecHead id="faq-h" n={6} word="Questions">Questions</SecHead>
           <div className="qs">
             {FAQ.map((f, i) => (
               <details key={f.q} open={i === 0}>
@@ -228,13 +285,14 @@ export default function LandingPage({ onEnterDemo }: Props) {
         </section>
 
         <section id="talk" className="ask" aria-labelledby="talk-h">
-          <div className="wrap ask-in">
+          <div className="wrap ask-in" data-reveal>
             <div>
+              <p className="sec-n">07</p>
               <h2 id="talk-h">Twenty minutes about certificate week</h2>
               <p>I’m an accounting graduate in Auckland, researching how sole practitioners and small firms prepare the monthly trust account certificate. I’m not selling anything, and I won’t ask for any client data.</p>
               <div className="hero-actions">
                 <a className="btn btn--light" href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">Message me on LinkedIn</a>
-                <button className="textlink" style={{ color: '#fff' }} onClick={() => onEnterDemo()}>Read the sample report first</button>
+                <button className="textlink" onClick={() => onEnterDemo()}>Read the sample report first</button>
               </div>
             </div>
             <div>
