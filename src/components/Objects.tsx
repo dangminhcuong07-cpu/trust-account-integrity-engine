@@ -1,10 +1,10 @@
-// The desk objects, all Blender renders (Cycles; scene scripts and the export
-// step are in tools/blender/): the law library behind the hero (Shelves), the
-// green banker's lamp that lights the report (Lamp), and the fountain pen that
-// signs it (Pen, and Nib as a small icon). All are decoration: alt="" and
-// aria-hidden.
+// The desk scene. The law library behind the hero (Shelves) is a photo by Magda
+// Ehlers on Pexels, graded to sit behind the text (tools/photo/). The green
+// banker's lamp that lights the report (Lamp) and the fountain pen that signs
+// it (Pen, and Nib as a small icon) are Blender renders (tools/blender/). All
+// are decoration: alt="" and aria-hidden.
 
-/** Shelves of leather-bound law reports, softly lit; the hero's background. */
+/** A wall of antique leather-bound books, dim and warm; the hero's background. */
 export function Shelves() {
   return (
     <img

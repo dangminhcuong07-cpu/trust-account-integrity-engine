@@ -1,6 +1,6 @@
 # Desk objects (Blender)
 
-The law library behind the hero, the banker's lamp, the fountain pen and the nib icon on the site are Cycles renders made from these scripts. They are modelled the way Polygon Runway's "5 Models in 7 Minutes" tutorial works: lathe profiles spun with a Screw modifier, then Solidify and Subdivision. The lamp shade and the nib are swept from cross-sections.
+The banker's lamp, the fountain pen and the nib icon on the site are Cycles renders made from these scripts. `library.py` renders a law library too; the site now uses a photo for that instead (see `tools/photo/`), but the render is kept as an alternative. They are modelled the way Polygon Runway's "5 Models in 7 Minutes" tutorial works: lathe profiles spun with a Screw modifier, then Solidify and Subdivision. The lamp shade and the nib are swept from cross-sections.
 
 Run them from this folder with Blender 5.2's Python module (or with `blender -b -P <script>`):
 
