@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { reportSummary } from '../data';
 import { CHECKS, FINDINGS, LINKEDIN_URL, NOT_RUN, checkName, type Finding } from '../lib/rules';
+import { Nib } from './Objects';
 import { PLAIN_NAME, actionFor, findingSpan, fmtIso, matterOf, money, plainEvidence } from '../lib/plain';
 
 type Filter = 'all' | 'critical' | 'high';
@@ -63,7 +64,7 @@ export default function EngineResults({ focus }: { focus?: string }) {
       </div>
 
       <p className="ap-first">
-        <strong>Before you sign:</strong> {od.count} client ledgers went below zero. The deepest was matter {od.deepest.matter} at{' '}
+        <Nib className="nib" /><strong>Before you sign:</strong> {od.count} client ledgers went below zero. The deepest was matter {od.deepest.matter} at{' '}
         <strong className="money neg">{fmtNzd(od.deepest.bal)}</strong> on {fmtIso(od.deepest.date)}.
       </p>
 

@@ -118,19 +118,21 @@ button { font: inherit; color: inherit; }
 .index a[aria-current='location']::before { background: var(--lamp); border-color: var(--lamp); }
 
 /* Hero: one full screen. The headline, then the report rising into the lamp light. */
-.hero { position: relative; min-height: 100svh; display: grid; grid-template-rows: auto auto; justify-items: center; padding: clamp(112px, 17vh, 168px) var(--margin) 0; overflow: clip; isolation: isolate; text-align: center; }
-.hero::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 58%; width: min(1400px, 150vw); aspect-ratio: 1.6; transform: translate(-50%, -30%); background: radial-gradient(closest-side, var(--lamp-glow), transparent 72%); pointer-events: none; }
-.hero::after { content: ''; position: absolute; z-index: -2; inset: 0; background-image: radial-gradient(1px 1px at 12% 22%, #5d5953 50%, transparent 51%), radial-gradient(1px 1px at 78% 14%, #5d5953 50%, transparent 51%), radial-gradient(1px 1px at 64% 38%, #45423e 50%, transparent 51%), radial-gradient(1px 1px at 27% 61%, #45423e 50%, transparent 51%), radial-gradient(1px 1px at 88% 52%, #5d5953 50%, transparent 51%), radial-gradient(1px 1px at 41% 9%, #45423e 50%, transparent 51%), radial-gradient(1px 1px at 6% 79%, #5d5953 50%, transparent 51%); pointer-events: none; }
+.hero { position: relative; min-height: 100svh; display: grid; grid-template-rows: auto auto; justify-items: center; padding: clamp(112px, 17vh, 168px) var(--margin) 76px; overflow: clip; isolation: isolate; text-align: center; }
+.hero::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 62%; width: min(1400px, 150vw); aspect-ratio: 1.6; transform: translate(-50%, -30%); background: radial-gradient(closest-side, var(--lamp-glow), transparent 72%); pointer-events: none; }
+.library { position: absolute; z-index: -2; inset: 0 0 auto 0; height: max(56.25vw, 640px); -webkit-mask-image: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.45) 45%, transparent 78%); mask-image: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.45) 45%, transparent 78%); pointer-events: none; }
+.library::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 60% 55% at 50% 38%, rgba(11, 11, 12, 0.88), rgba(11, 11, 12, 0.35) 70%, transparent); }
+.shelves { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
 .hero-copy { max-width: 62rem; }
 .hero h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: var(--step-display); line-height: 1.02; letter-spacing: -0.02em; text-wrap: balance; }
 .hero h1 span, .hero h1 em { display: block; }
-.hero h1 em { font-style: italic; color: var(--lamp); }
+.hero h1 em { font-style: normal; color: var(--lamp); }
 .hero-lede { margin: 28px auto 0; max-width: 36em; color: #cfc8bd; }
 .hero-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; margin-top: 32px; }
 
 /* The stage tilts the sheet back like a page on a desk, and lays it flat as you scroll (--p from scroll.ts). */
-.stage { --t: min(1, calc(var(--p, 0) * 1.7)); width: min(820px, 100%); margin-top: clamp(48px, 8vh, 88px); perspective: 1400px; text-align: left; }
-.sheet { transform-origin: 50% 0; transform: rotateX(calc((1 - var(--t)) * 26deg)) scale(calc(0.9 + var(--t) * 0.1)); padding: clamp(24px, 3.6vw, 52px); font-size: 0.9375rem; line-height: 1.45; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 40px 120px -20px rgba(242, 181, 107, calc(0.12 + var(--t) * 0.14)), 0 60px 80px -40px rgba(0, 0, 0, 0.9); will-change: transform; }
+.stage { --t: min(1, calc(var(--p, 0) * 1.7)); position: relative; width: min(820px, 100%); margin-top: clamp(48px, 8vh, 88px); perspective: 1400px; text-align: left; }
+.sheet { transform-origin: 50% 0; transform: rotateX(calc((1 - var(--t)) * 26deg)) scale(calc(0.9 + var(--t) * 0.1)); padding: clamp(24px, 3.6vw, 52px); font-size: 0.9375rem; line-height: 1.45; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 60px 80px -40px rgba(0, 0, 0, 0.9); will-change: transform; position: relative; }
 .sheet-title { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; border-bottom: 2px solid var(--ink); padding-bottom: 10px; }
 .sheet-title b { font-family: var(--serif); font-weight: 600; font-size: 1.625rem; }
 .sheet-title span { color: var(--muted); }
@@ -147,6 +149,50 @@ button { font: inherit; color: inherit; }
 .sheet-row.is-na:hover { background: none; }
 .sheet-foot { border-top: 1px solid var(--rule); padding-top: 12px; margin: 0; color: var(--muted); font-size: 0.875rem; }
 
+/* The desk objects move like Polygon Runway's soft 3D models: they spring into
+   place with an overshoot, then keep still. Only the lamp's light keeps breathing.
+   Order: sheet rises (250ms), lamp pops (700ms), light flickers on (1400ms), pen drops (1500ms). */
+.lamp { position: absolute; z-index: 2; right: -119px; top: -200px; width: 210px; pointer-events: none; transform-origin: 50% 100%; animation: pop-in 850ms 700ms var(--ease-out) both; }
+.lamp img { position: relative; z-index: 1; display: block; width: 100%; height: auto; }
+.lamp .lamp-on { position: absolute; inset: 0; z-index: 2; }
+/* The light under the shade: starts at the rim (25% down the render), widens to the desk. */
+.lamp-cone { position: absolute; z-index: 0; top: 25%; left: -8%; width: 100%; height: 76%; clip-path: polygon(10% 0, 92% 0, 100% 100%, 0 100%); background: radial-gradient(ellipse 58% 95% at 50% 0, rgba(255, 230, 185, 0.55), rgba(255, 200, 120, 0.12) 55%, transparent 82%); }
+.lamp-bulb { --on: 1; }
+.lamp-cone { --on: 0.5; }
+.lamp-bulb, .lamp-cone { opacity: var(--on); animation: flicker-on 700ms 1400ms linear both, breathe 4.8s 2100ms ease-in-out infinite alternate; }
+.stage::before { content: ''; position: absolute; z-index: 1; right: -18%; top: -60px; width: 95%; height: 520px; background: radial-gradient(ellipse 50% 45% at 62% 20%, rgba(255, 217, 160, 0.17), transparent 70%); pointer-events: none; mix-blend-mode: screen; animation: flicker-on 700ms 1400ms linear both; }
+@keyframes pop-in {
+  0% { opacity: 0; transform: translateY(28px) scale(0.55); }
+  55% { opacity: 1; transform: translateY(-8px) scale(1.07); }
+  75% { transform: translateY(2px) scale(0.97); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes flicker-on {
+  0% { opacity: 0; } 18% { opacity: calc(var(--on, 1) * 0.8); } 28% { opacity: calc(var(--on, 1) * 0.15); }
+  46% { opacity: var(--on, 1); } 56% { opacity: calc(var(--on, 1) * 0.55); } 100% { opacity: var(--on, 1); }
+}
+@keyframes breathe { from { opacity: var(--on); } to { opacity: calc(var(--on) * 0.82); } }
+/* The lamp's light on the report: a warm pool at the top-right corner, fading across the
+   paper. Multiply tints the paper without washing out the ink. It switches on with the lamp. */
+.sheet::after { content: ''; --on: 1; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; background: radial-gradient(ellipse 62% 48% at 97% 0%, rgba(255, 190, 110, 0.34), rgba(255, 205, 140, 0.14) 45%, transparent 75%), linear-gradient(200deg, transparent 35%, rgba(60, 45, 30, 0.09)); opacity: var(--on); animation: flicker-on 700ms 1400ms linear both, breathe 4.8s 2100ms ease-in-out infinite alternate; }
+/* The pen lies across the report's lower corner, ready to sign; it drops in and settles. */
+.pen { position: absolute; right: 6px; bottom: 4px; width: 290px; height: auto; pointer-events: none; animation: pen-drop 900ms 1500ms var(--ease-out) both; } /* angle and shadow are in the render */
+@keyframes pen-drop {
+  0% { opacity: 0; transform: translate(70px, -60px) rotate(-14deg) scale(1.08); }
+  55% { opacity: 1; transform: translate(0, 5px) rotate(2.5deg) scale(1); }
+  75% { transform: translate(0, -2px) rotate(-1deg); }
+  100% { opacity: 1; transform: none; }
+}
+/* The nib pops in with a twist when its line comes into view. */
+.nib { display: inline-block; width: 11px; height: 22px; vertical-align: -5px; margin-right: 10px; animation: nib-pop 650ms 250ms var(--ease-out) both; }
+.js [data-reveal]:not(.in) .nib { animation: none; }
+@keyframes nib-pop {
+  0% { transform: scale(0) rotate(-35deg); }
+  60% { transform: scale(1.25) rotate(8deg); }
+  80% { transform: scale(0.92) rotate(-3deg); }
+  100% { transform: none; }
+}
+
 /* Corner labels on the first screen */
 .hud { position: absolute; bottom: 20px; margin: 0; font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 10px; }
 .hud--l { left: var(--margin); }
@@ -159,7 +205,6 @@ button { font: inherit; color: inherit; }
 .sec { position: relative; padding-block: clamp(96px, 14vw, 176px) 0; }
 .sec-head { position: relative; max-width: 50em; margin-bottom: 44px; isolation: isolate; }
 .drift { position: absolute; z-index: -1; left: 0; top: 50%; translate: calc(18vw - var(--p, 0) * 30vw) -58%; font-family: var(--serif); font-size: clamp(5rem, 15vw, 15rem); line-height: 1; white-space: nowrap; color: transparent; -webkit-text-stroke: 1px #252422; pointer-events: none; user-select: none; }
-.sec-n { margin: 0 0 14px; font-family: var(--mono); font-size: 0.8125rem; letter-spacing: 0.1em; color: var(--lamp); }
 .sec h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: var(--step-head); line-height: 1.06; letter-spacing: -0.015em; text-wrap: balance; }
 .sec-lede { margin: 18px 0 0; max-width: 40em; color: var(--muted); }
 .sec-lede strong { color: var(--ink); font-weight: 600; }
@@ -229,7 +274,7 @@ button { font: inherit; color: inherit; }
 .runs p { margin: 0; color: #cfc8bd; }
 .runs figure { margin: 0; }
 .runs figcaption { margin-top: 14px; font-size: 0.875rem; color: var(--muted); }
-.lit img { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 30px 100px -20px rgba(242, 181, 107, 0.22), 0 40px 60px -30px #000; }
+.lit img { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 40px 60px -30px #000; }
 
 /* Questions: native disclosure, one per row */
 .qs { max-width: 52em; }
@@ -246,7 +291,6 @@ button { font: inherit; color: inherit; }
 .ask::before { content: ''; position: absolute; z-index: -1; left: 30%; bottom: -40%; width: 1100px; aspect-ratio: 1.4; transform: translateX(-50%); background: radial-gradient(closest-side, var(--lamp-glow), transparent 70%); pointer-events: none; }
 .ask-in { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(32px, 6vw, 96px); padding-block: clamp(72px, 10vw, 128px); }
 .ask h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: var(--step-head); line-height: 1.06; letter-spacing: -0.015em; text-wrap: balance; }
-.ask .sec-n { margin: 0 0 14px; }
 .ask p { margin: 20px 0 0; max-width: 32em; color: #cfc8bd; }
 .ask .hero-actions { justify-content: flex-start; }
 .ask h3 { margin: 0 0 14px; font-family: var(--mono); font-size: 0.8125rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; color: var(--muted); }
@@ -266,6 +310,9 @@ button { font: inherit; color: inherit; }
   .index { display: block; }
   .sec.wrap, .ask .wrap, .foot.wrap { padding-left: max(var(--margin), 220px); }
 }
+@media (max-width: 1100px) {
+  .lamp { width: 165px; right: -37px; top: -156px; }
+}
 @media (max-width: 1000px) {
   .try, .runs, .ask-in { grid-template-columns: minmax(0, 1fr); }
   .finds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -282,6 +329,8 @@ button { font: inherit; color: inherit; }
   .try-table th:nth-child(3), .try-table td:nth-child(3) { display: none; }
   .hero-actions .btn { width: 100%; }
   .hud { display: none; }
+  .lamp { width: 100px; right: -2px; top: -66px; }
+  .pen { width: 180px; right: 2px; bottom: 2px; }
 }
 
 /* ═══ SAMPLE REPORT (app) ════════════════════════════════════════════════ */
@@ -364,8 +413,9 @@ button { font: inherit; color: inherit; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; transition-delay: 0ms !important; }
+  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; transition-delay: 0ms !important; }
   .btn:active, .ap-btn:active { transform: none; }
   .sheet { transform: none; }
   .drift { translate: 0 -58%; }
+  .lamp-bulb, .lamp-cone, .sheet::after { animation: none; }
 }
